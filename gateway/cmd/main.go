@@ -2,19 +2,27 @@ package main
 
 import (
 	"cardwar/common"
-	"cardwar/gateway/router"
+	"cardwar/common/utils"
+	"cardwar/conf"
+	"cardwar/gateway/internal/router"
+	"flag"
+	"fmt"
 
 	"github.com/aceld/zinx/znet"
 )
 
 func main() {
+	// 服务配置
+	configPath := flag.String("conf", "config.yml", "path to config file")
+	flag.Parse()
 
-	//1 创建一个server服务
+	if err := conf.Load(*configPath); err != nil {
+		panic(err)
+	}
+
+	fmt.Println(utils.ToPrettyJsonForDebug(conf.GlobalConfig))
+
 	s := znet.NewServer()
-
-	//2 配置路由
 	s.AddRouter(common.MsgIdPing, &router.PingRouter{})
-
-	//3 启动服务
 	s.Serve()
 }
