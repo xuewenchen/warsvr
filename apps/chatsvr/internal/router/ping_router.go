@@ -1,7 +1,7 @@
 package router
 
 import (
-	"cardwar/common"
+	"cardwar/protocol"
 	"fmt"
 
 	"github.com/aceld/zinx/ziface"
@@ -23,7 +23,7 @@ func (r *PingRouter) PreHandle(request ziface.IRequest) {
 func (r *PingRouter) Handle(request ziface.IRequest) {
 	//读取客户端的数据
 	fmt.Println("Handle: recv from client : msgId=", request.GetMsgID(), ", data=", string(request.GetData()))
-	request.GetConnection().SendMsg(common.MsgIdPong, []byte("pong...pong...pong...[FromServer]"))
+	request.GetConnection().SendMsg(protocol.MsgIdPong, []byte("pong...pong...pong...[FromServer]"))
 }
 
 // Ping Handle MsgIdPing的路由处理方法

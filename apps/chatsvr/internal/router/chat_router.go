@@ -1,13 +1,14 @@
 package router
 
 import (
-	"cardwar/common"
-	"encoding/json"
+	"cardwar/protocol"
+	"cardwar/protocol/pb"
 	"time"
 
 	"github.com/aceld/zinx/ziface"
 	"github.com/aceld/zinx/zlog"
 	"github.com/aceld/zinx/znet"
+	"google.golang.org/protobuf/proto"
 )
 
 type ChatRouter struct {
@@ -15,34 +16,34 @@ type ChatRouter struct {
 }
 
 func (r *ChatRouter) Handle(request ziface.IRequest) {
-	var env common.Envelope
-	if err := json.Unmarshal(request.GetData(), &env); err != nil {
+	var env pb.Envelope
+	if err := proto.Unmarshal(request.GetData(), &env); err != nil {
 		zlog.Error(err)
 		return
 	}
 
-	var chatMsg common.ChatMsg
-	if err := json.Unmarshal(env.Data, &chatMsg); err != nil {
+	var chatReq pb.ChatReq
+	if err := proto.Unmarshal(env.Data, &chatReq); err != nil {
 		zlog.Error(err)
 		return
 	}
 
-	if _, ok := loggedInPlayers.Load(chatMsg.PlayerID); !ok {
-		zlog.Ins().InfoF("ChatRouter: player not logged in: %s", chatMsg.PlayerID)
+	if _, ok := loggedInPlayers.Load(chatReq.PlayerId); !ok {
+		zlog.Ins().InfoF("ChatRouter: player not logged in: %s", chatReq.PlayerId)
 		return
 	}
 
-	bcMsg := common.BroadcastMsg{
-		PlayerID:  chatMsg.PlayerID,
-		Content:   chatMsg.Content,
+	bcMsg := &pb.BroadcastPush{
+		PlayerId:  chatReq.PlayerId,
+		Content:   chatReq.Content,
 		Timestamp: time.Now().Unix(),
 	}
-	bcData, _ := json.Marshal(bcMsg)
+	bcData, _ := proto.Marshal(bcMsg)
 
-	bcEnv := common.Envelope{ConnID: 0, Data: bcData}
-	bcEnvData, _ := json.Marshal(bcEnv)
+	bcEnv := &pb.Envelope{ConnId: 0, Data: bcData}
+	bcEnvData, _ := proto.Marshal(bcEnv)
 
-	request.GetConnection().SendMsg(common.MsgIdBroadcast, bcEnvData)
+	request.GetConnection().SendMsg(protocol.MsgIdBroadcast, bcEnvData)
 
-	zlog.Ins().InfoF("Broadcast from %s: %s", chatMsg.PlayerID, chatMsg.Content)
+	zlog.Ins().InfoF("Broadcast from %s: %s", chatReq.PlayerId, chatReq.Content)
 }

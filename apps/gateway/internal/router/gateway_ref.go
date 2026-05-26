@@ -1,7 +1,7 @@
 package router
 
 import (
-	"cardwar/common"
+	"cardwar/pkg"
 	"sync"
 
 	"github.com/aceld/zinx/ziface"
@@ -9,7 +9,7 @@ import (
 
 // GatewayRef holds Gateway-specific state. Embeds Registry for backend connection management.
 type GatewayRef struct {
-	*common.Registry
+	*pkg.Registry
 	Server      ziface.IServer
 	PlayerConns *sync.Map // playerID → connID (uint64)
 }

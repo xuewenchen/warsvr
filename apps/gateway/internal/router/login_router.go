@@ -1,12 +1,13 @@
 package router
 
 import (
-	"cardwar/common"
-	"encoding/json"
+	"cardwar/protocol"
+	"cardwar/protocol/pb"
 
 	"github.com/aceld/zinx/ziface"
 	"github.com/aceld/zinx/zlog"
 	"github.com/aceld/zinx/znet"
+	"google.golang.org/protobuf/proto"
 )
 
 type LoginRouter struct {
@@ -15,22 +16,22 @@ type LoginRouter struct {
 }
 
 func (r *LoginRouter) Handle(request ziface.IRequest) {
-	var msg common.LoginMsg
-	if err := json.Unmarshal(request.GetData(), &msg); err != nil {
+	var msg pb.LoginReq
+	if err := proto.Unmarshal(request.GetData(), &msg); err != nil {
 		zlog.Error(err)
 		return
 	}
 
-	env := common.Envelope{
-		ConnID: request.GetConnection().GetConnID(),
+	env := &pb.Envelope{
+		ConnId: request.GetConnection().GetConnID(),
 		Data:   request.GetData(),
 	}
-	envData, _ := json.Marshal(env)
+	envData, _ := proto.Marshal(env)
 
-	conn := r.GW.RouteTo("chatsvr", msg.PlayerID)
+	conn := r.GW.RouteTo("chatsvr", msg.PlayerId)
 	if conn == nil {
 		zlog.Ins().ErrorF("LoginRouter: no healthy chatsvr backend")
 		return
 	}
-	conn.SendMsg(common.MsgIdLogin, envData)
+	conn.SendMsg(protocol.MsgIdLogin, envData)
 }

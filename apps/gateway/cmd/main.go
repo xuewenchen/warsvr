@@ -2,8 +2,9 @@ package main
 
 import (
 	"cardwar/apps/gateway/internal/router"
-	"cardwar/common"
 	"cardwar/conf"
+	"cardwar/pkg"
+	"cardwar/protocol"
 	"flag"
 	"sync"
 
@@ -23,16 +24,16 @@ func main() {
 	}
 
 	gw := &router.GatewayRef{
-		Registry:    common.NewRegistry(),
+		Registry:    pkg.NewRegistry(),
 		PlayerConns: &sync.Map{},
 	}
 
 	gw.Dial("chatsvr",
-		[]common.BackendRouterConfig{
-			{MsgID: common.MsgIdLoginRsp, Router: &router.LoginRspRouter{GW: gw}},
-			{MsgID: common.MsgIdBroadcast, Router: &router.BroadcastRouter{GW: gw}},
+		[]pkg.BackendRouterConfig{
+			{MsgID: protocol.MsgIdLoginRsp, Router: &router.LoginRspRouter{GW: gw}},
+			{MsgID: protocol.MsgIdBroadcast, Router: &router.BroadcastRouter{GW: gw}},
 		},
-		common.HashRoute,
+		pkg.HashRoute,
 	)
 
 	initWebSocket(gw, *gwID)
@@ -66,7 +67,7 @@ func initWebSocket(gw *router.GatewayRef, gwID string) {
 		zlog.Ins().InfoF("Client disconnected: connID=%d", conn.GetConnID())
 	})
 
-	wsServer.AddRouter(common.MsgIdPing, &router.PingRouter{})
-	wsServer.AddRouter(common.MsgIdLogin, &router.LoginRouter{GW: gw})
-	wsServer.AddRouter(common.MsgIdChat, &router.ChatRouter{GW: gw})
+	wsServer.AddRouter(protocol.MsgIdPing, &router.PingRouter{})
+	wsServer.AddRouter(protocol.MsgIdLogin, &router.LoginRouter{GW: gw})
+	wsServer.AddRouter(protocol.MsgIdChat, &router.ChatRouter{GW: gw})
 }

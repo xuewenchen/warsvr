@@ -11,7 +11,21 @@
       "Bash(taskkill *)",
       "Bash(ls -la apps/)",
       "Bash(ls -la app/)",
-      "Bash(grep -r \"empty\\\\|both modes\\\\|Mode.*tcp\\\\|Mode.*ws\\\\|StartWebSocket\\\\|startWebsocket\\\\|WsPort\\\\|ListenAndServe\" --include=\"*.go\" \"$\\(go env GOPATH\\)/pkg/mod/github.com/aceld/zinx@v1.2.8/\")"
+      "Bash(grep -r \"empty\\\\|both modes\\\\|Mode.*tcp\\\\|Mode.*ws\\\\|StartWebSocket\\\\|startWebsocket\\\\|WsPort\\\\|ListenAndServe\" --include=\"*.go\" \"$\\(go env GOPATH\\)/pkg/mod/github.com/aceld/zinx@v1.2.8/\")",
+      "Bash(grep -A20 \"func.*Pack\\\\|func.*Unpack\\\\|type DataPack\\\\|HeadLen\\\\|GetHeadLen\" \"$\\(go env GOPATH\\)/pkg/mod/github.com/aceld/zinx@v1.2.8/znet/datapack.go\")",
+      "Bash(cat \"$\\(go env GOPATH\\)/pkg/mod/github.com/aceld/zinx@v1.2.8/ziface/idatapack.go\")",
+      "Bash(cat \"$\\(go env GOPATH\\)/pkg/mod/github.com/aceld/zinx@v1.2.8/znet/datapack.go\")",
+      "Bash(protoc --version)",
+      "Bash(go install *)",
+      "Bash(cd /tmp)",
+      "Bash(curl -sLO https://github.com/protocolbuffers/protobuf/releases/download/v29.3/protoc-29.3-win64.zip)",
+      "Bash(unzip -o protoc-29.3-win64.zip -d __TRACKED_VAR__/protoc)",
+      "Bash(mkdir -p common/pb)",
+      "Bash(PATH=__TRACKED_VAR__/protoc/bin:__TRACKED_VAR__/go/bin:__TRACKED_VAR__ protoc --go_out=. --go_opt=paths=source_relative proto/cardwar.proto)",
+      "Bash(go mod *)",
+      "Bash(rm -f common/pb/cardwar.pb.go proto/cardwar.pb.go)",
+      "Bash(PATH=__TRACKED_VAR__/protoc/bin:__TRACKED_VAR__/go/bin:__TRACKED_VAR__ protoc --go_out=. --go_opt=paths=source_relative protocol/proto/cardwar.proto)",
+      "Bash(mv protocol/proto/cardwar.pb.go protocol/pb/cardwar.pb.go)"
     ]
   }
 }

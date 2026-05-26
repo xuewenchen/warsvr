@@ -1,7 +1,7 @@
 package router
 
 import (
-	"cardwar/common"
+	"cardwar/protocol"
 
 	"github.com/aceld/zinx/ziface"
 	"github.com/aceld/zinx/zlog"
@@ -20,7 +20,7 @@ func (this *PingRouter) Handle(request ziface.IRequest) {
 	// Read the data from the client first, then send back "ping...ping...ping".
 	zlog.Ins().DebugF("recv from client : msgId=%d, data=%+v, len=%d", request.GetMsgID(), string(request.GetData()), len(request.GetData()))
 
-	err := request.GetConnection().SendMsg(common.MsgIdPong, []byte("pong-server"))
+	err := request.GetConnection().SendMsg(protocol.MsgIdPong, []byte("pong-server"))
 	if err != nil {
 		zlog.Error(err)
 	}

@@ -4,6 +4,7 @@ go 1.26.2
 
 require (
 	github.com/aceld/zinx v1.2.8
+	google.golang.org/protobuf v1.33.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
