@@ -15,6 +15,7 @@ import (
 
 func main() {
 	configPath := flag.String("conf", "config.yml", "path to config file")
+	gwID := flag.String("id", "", "Gateway ID (matches config services.gateway[].id)")
 	flag.Parse()
 
 	if err := conf.Load(*configPath); err != nil {
@@ -27,14 +28,14 @@ func main() {
 	// 初始化后台服务
 	initBackendSvr(gw)
 	// 初始化websocket
-	initWebSocket(gw)
+	initWebSocket(gw, *gwID)
 
 	// 启动
 	gw.Server.Serve()
 }
 
-func initWebSocket(gw *router.GatewayRef) {
-	gwCfg := conf.GlobalConfig.Services["gateway"][0]
+func initWebSocket(gw *router.GatewayRef, gwID string) {
+	gwCfg := conf.LookupServer(conf.GlobalConfig.Services["gateway"], gwID, "Gateway")
 	// WS+TCP server for clients
 	_, wsPort := conf.ParseHostPort(gwCfg.WSListen)
 	tcpHost, tcpPort := conf.ParseHostPort(gwCfg.TCPListen)

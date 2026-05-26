@@ -19,22 +19,7 @@ func main() {
 		panic(err)
 	}
 
-	var csCfg conf.ServerNode
-	if *csID != "" {
-		found := false
-		for _, cfg := range conf.GlobalConfig.Services["chatsvr"] {
-			if cfg.ID == *csID {
-				csCfg = cfg
-				found = true
-				break
-			}
-		}
-		if !found {
-			panic("ChatSvr ID not found in config: " + *csID)
-		}
-	} else {
-		csCfg = conf.GlobalConfig.Services["chatsvr"][0]
-	}
+	csCfg := conf.LookupServer(conf.GlobalConfig.Services["chatsvr"], *csID, "ChatSvr")
 	host, port := conf.ParseHostPort(csCfg.Listen)
 
 	cfg := &zconf.Config{

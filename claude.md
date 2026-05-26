@@ -58,7 +58,7 @@ Gateway connects to backend services via `ConnectBackend(name, servers, poolFact
 
 ### Configuration
 
-`config.yml` — loaded by `conf/config.go` into `conf.GlobalConfig`. `ServicesConfig` is `map[string][]ServerNode` keyed by backend name (`"gateway"`, `"chatsvr"`, etc.). Each service uses the first entry in its config array.
+`config.yml` — loaded by `conf/config.go` into `conf.GlobalConfig`. `ServicesConfig` is `map[string][]ServerNode` keyed by backend name (`"gateway"`, `"chatsvr"`, etc.). `conf.LookupServer(servers, id, name)` selects a server by ID or falls back to the first entry.
 
 
 ## Commands
@@ -66,11 +66,15 @@ Gateway connects to backend services via `ConnectBackend(name, servers, poolFact
 ```bash
 # Terminal 1: Start ChatSvr
 go run ./chatsvr/cmd/main.go -conf config.yml
+go run ./chatsvr/cmd/main.go -conf config.yml -id chatsvr-1  # specify instance by ID
 
 # Terminal 2: Start Gateway
 go run ./gateway/cmd/main.go -conf config.yml
+go run ./gateway/cmd/main.go -conf config.yml -id gateway-1  # specify instance by ID
 
 # Terminal 3: Start test clients (multiple instances, different player IDs)
 go run client/cmd/main.go player1
 go run client/cmd/main.go player2
 ```
+
+Both ChatSvr and Gateway support an optional `-id` flag to select which config entry to use. If omitted, the first entry in the config array is used.

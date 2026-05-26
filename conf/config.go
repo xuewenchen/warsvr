@@ -37,6 +37,22 @@ func ParseHostPort(addr string) (string, int) {
 	return parts[0], port
 }
 
+// LookupServer finds a ServerNode by ID from the given list. If id is empty, returns the first entry.
+func LookupServer(servers []ServerNode, id, name string) ServerNode {
+	if len(servers) == 0 {
+		panic("no " + name + " configured")
+	}
+	if id != "" {
+		for _, s := range servers {
+			if s.ID == id {
+				return s
+			}
+		}
+		panic(name + " ID not found in config: " + id)
+	}
+	return servers[0]
+}
+
 var GlobalConfig *Config
 
 func Load(path string) error {
