@@ -27,6 +27,6 @@ func (r *ChatRouter) Handle(request ziface.IRequest) {
 	}
 	envData, _ := json.Marshal(env)
 
-	conn := r.GW.ChatSvrPool.Route(msg.PlayerID)
+	conn := r.GW.RouteTo("chatsvr", msg.PlayerID)
 	conn.SendMsg(common.MsgIdChat, envData)
 }

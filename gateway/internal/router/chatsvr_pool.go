@@ -6,6 +6,8 @@ import (
 	"github.com/aceld/zinx/ziface"
 )
 
+var _ BackendPool = (*ChatSvrPool)(nil)
+
 type ChatSvrPool struct {
 	conns []ziface.IConnection
 }

@@ -5,8 +5,6 @@ import (
 	"cardwar/conf"
 	"cardwar/gateway/internal/router"
 	"flag"
-	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/aceld/zinx/zconf"
@@ -14,18 +12,6 @@ import (
 	"github.com/aceld/zinx/zlog"
 	"github.com/aceld/zinx/znet"
 )
-
-func parseHostPort(addr string) (string, int) {
-	parts := strings.Split(addr, ":")
-	if len(parts) != 2 {
-		panic("invalid address: " + addr)
-	}
-	port, err := strconv.Atoi(parts[1])
-	if err != nil {
-		panic("invalid port: " + addr)
-	}
-	return parts[0], port
-}
 
 func main() {
 	configPath := flag.String("conf", "config.yml", "path to config file")
@@ -35,50 +21,29 @@ func main() {
 		panic(err)
 	}
 
-	gwCfg := conf.GlobalConfig.Services.Gateway[0]
-	csCfgs := conf.GlobalConfig.Services.ChatSvr
-	if len(csCfgs) == 0 {
-		panic("no ChatSvr configured")
-	}
+	gwCfg := conf.GlobalConfig.Services["gateway"][0]
 
 	gw := &router.GatewayRef{
 		PlayerConns: &sync.Map{},
 	}
 
-	// Connect to all ChatSvr instances
-	var wg sync.WaitGroup
-	csConns := make([]ziface.IConnection, len(csCfgs))
-
-	for i, csCfg := range csCfgs {
-		idx := i
-		cfg := csCfg
-
-		csHost, csPort := parseHostPort(cfg.Listen)
-		tcpClient := znet.NewClient(csHost, csPort)
-
-		tcpClient.SetOnConnStart(func(conn ziface.IConnection) {
-			csConns[idx] = conn
-			zlog.Ins().InfoF("Gateway connected to ChatSvr[%s]: %s", cfg.ID, conn.RemoteAddr())
-			wg.Done()
-		})
-		tcpClient.SetOnConnStop(func(conn ziface.IConnection) {
-			csConns[idx] = nil
-			zlog.Ins().InfoF("Gateway disconnected from ChatSvr[%s]", cfg.ID)
-		})
-
-		tcpClient.AddRouter(common.MsgIdLoginRsp, &router.LoginRspRouter{GW: gw})
-		tcpClient.AddRouter(common.MsgIdBroadcast, &router.BroadcastRouter{GW: gw})
-
-		wg.Add(1)
-		tcpClient.Start()
+	csCfgs := conf.GlobalConfig.Services["chatsvr"]
+	if len(csCfgs) == 0 {
+		panic("no ChatSvr configured")
 	}
-
-	wg.Wait()
-	gw.ChatSvrPool = router.NewChatSvrPool(csConns)
+	gw.ConnectBackend("chatsvr", csCfgs,
+		func(conns []ziface.IConnection) router.BackendPool {
+			return router.NewChatSvrPool(conns)
+		},
+		[]router.BackendRouterConfig{
+			{MsgID: common.MsgIdLoginRsp, Router: &router.LoginRspRouter{GW: gw}},
+			{MsgID: common.MsgIdBroadcast, Router: &router.BroadcastRouter{GW: gw}},
+		},
+	)
 
 	// WS+TCP server for clients
-	_, wsPort := parseHostPort(gwCfg.WSListen)
-	tcpHost, tcpPort := parseHostPort(gwCfg.TCPListen)
+	_, wsPort := conf.ParseHostPort(gwCfg.WSListen)
+	tcpHost, tcpPort := conf.ParseHostPort(gwCfg.TCPListen)
 
 	serverCfg := &zconf.Config{
 		Name:    "Gateway",

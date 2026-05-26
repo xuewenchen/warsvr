@@ -2,20 +2,6 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Commands
-
-```bash
-# Terminal 1: Start ChatSvr
-go run chatsvr/cmd/main.go -conf=config.yml
-
-# Terminal 2: Start Gateway
-go run gateway/cmd/main.go -conf=config.yml
-
-# Terminal 3: Start test clients (multiple instances, different player IDs)
-go run client/cmd/main.go player1
-go run client/cmd/main.go player2
-```
-
 ## Architecture
 
 This is a game/chat server (`cardwar`) built on **Zinx v1.2.8** — a TCP framework that provides message routing based on message IDs. The module path is `cardwar`.
@@ -46,7 +32,7 @@ Client (TCP/WS) ───> Gateway ───> ChatSvr (TCP)
 
 - **`common.Envelope`**: Internal wrapper between Gateway and ChatSvr. Contains `ConnID` (client session) and `Data` (original message as raw JSON). `ConnID=0` means broadcast.
 - **`common.LoginMsg`**, **`LoginRspMsg`**, **`ChatMsg`**, **`BroadcastMsg`**: Client-facing protocol messages, all JSON-encoded.
-- **`router.GatewayRef`** (`gateway_ref.go`): Shared state on Gateway — holds the `ChatSvrTCPConn`, the `IServer` reference (for client connection lookups), and `PlayerConns` (`sync.Map` of playerID → connID).
+- **`router.GatewayRef`** (`gateway_ref.go`): Shared state on Gateway — holds `Server` (the client-facing IServer), `Backends` (`map[string]BackendPool` for routing to different backend services), and `PlayerConns` (`sync.Map` of playerID → connID). `ConnectBackend` abstracts connecting to any backend service (ChatSvr, GameSvr, etc.) with configurable pool construction and router registration.
 
 ### Routing pattern
 
@@ -66,6 +52,25 @@ Each message type gets a router struct embedding `znet.BaseRouter` and implement
 3. ChatSvr checks login state, constructs a `BroadcastMsg{PlayerID, Content, Timestamp}`, wraps in `Envelope{ConnID: 0, Data}` and sends back (msgId=6).
 4. Gateway's `BroadcastRouter` sees `ConnID=0`, iterates all client connections and sends the broadcast message to every connected client.
 
+### Backend abstraction
+
+Gateway connects to backend services via `ConnectBackend(name, servers, poolFactory, routers)`. Each backend is identified by name (e.g. `"chatsvr"`) and stored in `GatewayRef.Backends` map. `BackendPool` is an interface with `Route(key string) ziface.IConnection` — `ChatSvrPool` implements it with hash-based routing. Adding a new backend (e.g. GameSvr) requires only a new pool type and a single `ConnectBackend` call.
+
 ### Configuration
 
-`config.yml` — loaded by `conf/config.go` into `conf.GlobalConfig`. Defines service listen addresses and IDs. Each service uses the first entry in its config array.
+`config.yml` — loaded by `conf/config.go` into `conf.GlobalConfig`. `ServicesConfig` is `map[string][]ServerNode` keyed by backend name (`"gateway"`, `"chatsvr"`, etc.). Each service uses the first entry in its config array.
+
+
+## Commands
+
+```bash
+# Terminal 1: Start ChatSvr
+go run ./chatsvr/cmd/main.go -conf config.yml
+
+# Terminal 2: Start Gateway
+go run ./gateway/cmd/main.go -conf config.yml
+
+# Terminal 3: Start test clients (multiple instances, different player IDs)
+go run client/cmd/main.go player1
+go run client/cmd/main.go player2
+```
