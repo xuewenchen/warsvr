@@ -9,13 +9,13 @@ This is a game/chat server (`cardwar`) built on **Zinx v1.2.8** — a TCP framew
 ### Service topology
 
 ```
-Client (TCP/WS) ───> Gateway ───> ChatSvr (TCP)
+Client (WebSocket) ───> Gateway ───> ChatSvr (TCP)
                 <───         <───
 ```
 
-- **Gateway** (`app/gateway/cmd/main.go`): Dual-protocol server (TCP:8999 + WebSocket:9000) facing clients. Maintains an internal TCP client connection to ChatSvr. Wraps incoming client messages in an `Envelope` (routing metadata with `ConnID`) and forwards them to ChatSvr. Routes responses back to the correct client connection, or broadcasts to all clients when `ConnID == 0`.
-- **ChatSvr** (`app/chatsvr/cmd/main.go`): A single TCP server (:8001) handling business logic — login validation, chat message processing, and broadcast generation. Stores logged-in player state in memory (`sync.Map`).
-- **Client** (`app/client/cmd/main.go`): Test client that auto-connects to Gateway, logs in with the given player ID, then sends chat messages on a 5-second loop.
+- **Gateway** (`apps/gateway/cmd/main.go`): Dual-protocol server (TCP:8999 + WebSocket:9000) facing clients. Maintains internal TCP connections to backend services via `common.Registry`. Wraps incoming client messages in an `Envelope` (routing metadata with `ConnID`) and forwards them to ChatSvr. Routes responses back to the correct client connection, or broadcasts to all clients when `ConnID == 0`.
+- **ChatSvr** (`apps/chatsvr/cmd/main.go`): A single TCP server (:8001) handling business logic — login validation, chat message processing, and broadcast generation. Stores logged-in player state in memory (`sync.Map`).
+- **Test Client** (`tools/testclient/cmd/main.go`): WebSocket test client that connects to Gateway (ws://127.0.0.1:9000/ws), logs in with the given player ID, then sends chat messages on a 5-second loop.
 
 ### Message flow (protocol in `common/chat_proto.go`)
 
@@ -32,7 +32,7 @@ Client (TCP/WS) ───> Gateway ───> ChatSvr (TCP)
 
 - **`common.Envelope`**: Internal wrapper between Gateway and ChatSvr. Contains `ConnID` (client session) and `Data` (original message as raw JSON). `ConnID=0` means broadcast.
 - **`common.LoginMsg`**, **`LoginRspMsg`**, **`ChatMsg`**, **`BroadcastMsg`**: Client-facing protocol messages, all JSON-encoded.
-- **`router.GatewayRef`** (`app/gateway/internal/router/gateway_ref.go`): Shared state on Gateway — embeds `*common.Registry` for backend connection management (Dial/RouteTo), adds `Server` (the client-facing IServer) and `PlayerConns` (`sync.Map` of playerID → connID).
+- **`router.GatewayRef`** (`apps/gateway/internal/router/gateway_ref.go`): Shared state on Gateway — embeds `*common.Registry` for backend connection management (Dial/RouteTo), adds `Server` (the client-facing IServer) and `PlayerConns` (`sync.Map` of playerID → connID).
 
 ### Routing pattern
 
@@ -89,9 +89,9 @@ go run ./apps/chatsvr/cmd/main.go -conf config.yml -id chatsvr-1  # specify inst
 go run ./apps/gateway/cmd/main.go -conf config.yml
 go run ./apps/gateway/cmd/main.go -conf config.yml -id gateway-1  # specify instance by ID
 
-# Terminal 3: Start test clients (multiple instances, different player IDs)
-go run ./apps/client/cmd/main.go player1
-go run ./apps/client/cmd/main.go player2
+# Terminal 3: Start test clients (WebSocket, multiple instances, different player IDs)
+go run ./tools/testclient/cmd/main.go player1
+go run ./tools/testclient/cmd/main.go player2
 ```
 
 Both ChatSvr and Gateway support an optional `-id` flag to select which config entry to use. If omitted, the first entry in the config array is used.

@@ -8,7 +8,10 @@
       "Bash(go run *)",
       "Bash(taskkill /F /IM main.exe)",
       "Bash(netstat -ano)",
-      "Bash(taskkill *)"
+      "Bash(taskkill *)",
+      "Bash(ls -la apps/)",
+      "Bash(ls -la app/)",
+      "Bash(grep -r \"empty\\\\|both modes\\\\|Mode.*tcp\\\\|Mode.*ws\\\\|StartWebSocket\\\\|startWebsocket\\\\|WsPort\\\\|ListenAndServe\" --include=\"*.go\" \"$\\(go env GOPATH\\)/pkg/mod/github.com/aceld/zinx@v1.2.8/\")"
     ]
   }
 }
