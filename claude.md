@@ -54,7 +54,17 @@ Each message type gets a router struct embedding `znet.BaseRouter` and implement
 
 ### Backend abstraction
 
-Gateway connects to backend services via `ConnectBackend(name, servers, poolFactory, routers)`. Each backend is identified by name (e.g. `"chatsvr"`) and stored in `GatewayRef.Backends` map. `BackendPool` is an interface with `Route(key string) ziface.IConnection` — `ChatSvrPool` implements it with hash-based routing. Adding a new backend (e.g. GameSvr) requires only a new pool type and a single `ConnectBackend` call.
+Gateway connects to backend services via `ConnectBackend(name, servers, poolFactory, routers)`. Each backend is identified by name (e.g. `"chatsvr"`) and stored in `GatewayRef.Backends` map.
+
+**`BackendPool`** (`backend_pool.go`): Interface with `Route(key string) ziface.IConnection`. All backend pools implement this.
+
+**`BaseBackendPool`** (`base_backend_pool.go`): Generic connection pool with thread-safe connection management, automatic reconnection (exponential backoff: 1s → 2s → … → 30s), and health tracking via `HealthyConns()`. Service-specific pools embed this.
+
+**`ChatSvrPool`** (`chatsvr_pool.go`): Embeds `BaseBackendPool`, implements hash-based sticky routing by playerID. Reconnection uses the server address and router config from the original `ConnectBackend` call.
+
+Adding a new backend (e.g. GameSvr) requires:
+1. A new pool type embedding `BaseBackendPool` with a custom `Route()` method
+2. One `ConnectBackend` call in `initBackendSvr`
 
 ### Configuration
 

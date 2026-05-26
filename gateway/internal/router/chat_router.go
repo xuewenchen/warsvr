@@ -28,5 +28,9 @@ func (r *ChatRouter) Handle(request ziface.IRequest) {
 	envData, _ := json.Marshal(env)
 
 	conn := r.GW.RouteTo("chatsvr", msg.PlayerID)
+	if conn == nil {
+		zlog.Ins().ErrorF("ChatRouter: no healthy chatsvr backend")
+		return
+	}
 	conn.SendMsg(common.MsgIdChat, envData)
 }

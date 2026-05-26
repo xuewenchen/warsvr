@@ -5,7 +5,8 @@
       "Bash(go doc *)",
       "Bash(go build *)",
       "Bash(go vet *)",
-      "Bash(go run *)"
+      "Bash(go run *)",
+      "Bash(taskkill /F /IM main.exe)"
     ]
   }
 }

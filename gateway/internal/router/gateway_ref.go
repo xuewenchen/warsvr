@@ -27,6 +27,7 @@ func (gw *GatewayRef) ConnectBackend(name string, servers []conf.ServerNode, poo
 
 	var wg sync.WaitGroup
 	conns := make([]ziface.IConnection, len(servers))
+	var bp *BaseBackendPool
 
 	for i, svr := range servers {
 		idx := i
@@ -43,6 +44,9 @@ func (gw *GatewayRef) ConnectBackend(name string, servers []conf.ServerNode, poo
 		tcpClient.SetOnConnStop(func(conn ziface.IConnection) {
 			conns[idx] = nil
 			zlog.Ins().InfoF("Gateway disconnected from %s[%s]", name, srv.ID)
+			if bp != nil {
+				bp.onDisconnect(idx)
+			}
 		})
 
 		for _, rc := range routers {
@@ -54,5 +58,9 @@ func (gw *GatewayRef) ConnectBackend(name string, servers []conf.ServerNode, poo
 	}
 
 	wg.Wait()
-	gw.Backends[name] = poolFactory(conns)
+	pool := poolFactory(conns)
+	if hb, ok := pool.(interface{ getBase() *BaseBackendPool }); ok {
+		bp = hb.getBase()
+	}
+	gw.Backends[name] = pool
 }

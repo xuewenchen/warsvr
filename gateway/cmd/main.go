@@ -75,14 +75,14 @@ func initChatSvr(gw *router.GatewayRef) {
 	if len(csCfgs) == 0 {
 		panic("no ChatSvr configured")
 	}
-	// init chat svr
+	routers := []router.BackendRouterConfig{
+		{MsgID: common.MsgIdLoginRsp, Router: &router.LoginRspRouter{GW: gw}},
+		{MsgID: common.MsgIdBroadcast, Router: &router.BroadcastRouter{GW: gw}},
+	}
 	gw.ConnectBackend("chatsvr", csCfgs,
 		func(conns []ziface.IConnection) router.BackendPool {
-			return router.NewChatSvrPool(conns)
+			return router.NewChatSvrPool(conns, csCfgs, routers)
 		},
-		[]router.BackendRouterConfig{
-			{MsgID: common.MsgIdLoginRsp, Router: &router.LoginRspRouter{GW: gw}},
-			{MsgID: common.MsgIdBroadcast, Router: &router.BroadcastRouter{GW: gw}},
-		},
+		routers,
 	)
 }
