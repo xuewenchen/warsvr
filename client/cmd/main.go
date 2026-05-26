@@ -3,45 +3,59 @@ package main
 import (
 	"cardwar/client/cmd/router"
 	"cardwar/common"
+	"encoding/json"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/aceld/zinx/ziface"
 	"github.com/aceld/zinx/znet"
 )
 
-// 客户端自定义业务
-func pingLoop(conn ziface.IConnection) {
-	for {
-		err := conn.SendMsg(common.MsgIdPing, []byte("Ping...Ping...Ping...[FromClient]"))
-		if err != nil {
-			fmt.Println(err)
-			break
-		}
+var playerID string
 
-		time.Sleep(1 * time.Second)
+func login(conn ziface.IConnection) {
+	msg := common.LoginMsg{PlayerID: playerID}
+	data, _ := json.Marshal(msg)
+	conn.SendMsg(common.MsgIdLogin, data)
+	fmt.Println("Sent login:", playerID)
+}
+
+func chatLoop(conn ziface.IConnection) {
+	time.Sleep(2 * time.Second)
+	for i := 0; ; i++ {
+		msg := common.ChatMsg{
+			PlayerID: playerID,
+			Content:  fmt.Sprintf("Hello #%d from %s", i, playerID),
+		}
+		data, _ := json.Marshal(msg)
+		if err := conn.SendMsg(common.MsgIdChat, data); err != nil {
+			fmt.Println("Send chat error:", err)
+			return
+		}
+		time.Sleep(5 * time.Second)
 	}
 }
 
-// 创建连接的时候执行
 func onClientStart(conn ziface.IConnection) {
-	fmt.Println("onClientStart is Called ... ")
-	go pingLoop(conn)
+	fmt.Println("Connected to gateway")
+	login(conn)
+	go chatLoop(conn)
 }
 
 func main() {
-	//创建Client客户端
+	if len(os.Args) > 1 {
+		playerID = os.Args[1]
+	} else {
+		playerID = "player1"
+	}
+
 	client := znet.NewClient("127.0.0.1", 8999)
-
-	//设置链接建立成功后的钩子函数
 	client.SetOnConnStart(onClientStart)
-
-	//设置消息读取路由
 	client.AddRouter(common.MsgIdPong, &router.PongRouter{})
+	client.AddRouter(common.MsgIdLoginRsp, &router.LoginRspRouter{})
+	client.AddRouter(common.MsgIdBroadcast, &router.BroadcastRouter{})
 
-	//启动客户端
 	client.Start()
-
-	//防止进程退出，等待中断信号
 	select {}
 }

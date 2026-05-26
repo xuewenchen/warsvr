@@ -1,0 +1,12 @@
+services:
+
+  gateway:
+    - id: gateway-1
+      tcp_listen: 0.0.0.0:8999
+      ws_listen: 0.0.0.0:9000
+      public_addr: 127.0.0.1:8999
+
+  chatsvr:
+    - id: chatsvr-1
+      listen: 0.0.0.0:8001
+      public_addr: 127.0.0.1:8001

@@ -20,6 +20,7 @@ type ServerNode struct {
 	ID         string `yaml:"id"`
 	TCPListen  string `yaml:"tcp_listen"`
 	WSListen   string `yaml:"ws_listen"`
+	Listen     string `yaml:"listen"`
 	PublicAddr string `yaml:"public_addr"`
 }
 
