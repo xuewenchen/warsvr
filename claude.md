@@ -32,7 +32,7 @@ Client (TCP/WS) ───> Gateway ───> ChatSvr (TCP)
 
 - **`common.Envelope`**: Internal wrapper between Gateway and ChatSvr. Contains `ConnID` (client session) and `Data` (original message as raw JSON). `ConnID=0` means broadcast.
 - **`common.LoginMsg`**, **`LoginRspMsg`**, **`ChatMsg`**, **`BroadcastMsg`**: Client-facing protocol messages, all JSON-encoded.
-- **`router.GatewayRef`** (`gateway_ref.go`): Shared state on Gateway — holds `Server` (the client-facing IServer), `Backends` (`map[string]common.BackendPool` for routing to different backend services), and `PlayerConns` (`sync.Map` of playerID → connID). `ConnectBackend` abstracts connecting to any backend service (ChatSvr, GameSvr, etc.) with configurable pool construction and router registration.
+- **`router.GatewayRef`** (`gateway_ref.go`): Shared state on Gateway — embeds `*common.Registry` for backend connection management (Dial/RouteTo), adds `Server` (the client-facing IServer) and `PlayerConns` (`sync.Map` of playerID → connID).
 
 ### Routing pattern
 
@@ -52,25 +52,26 @@ Each message type gets a router struct embedding `znet.BaseRouter` and implement
 3. ChatSvr checks login state, constructs a `BroadcastMsg{PlayerID, Content, Timestamp}`, wraps in `Envelope{ConnID: 0, Data}` and sends back (msgId=6).
 4. Gateway's `BroadcastRouter` sees `ConnID=0`, iterates all client connections and sends the broadcast message to every connected client.
 
-### Backend abstraction (`common/pool.go`)
+### Backend abstraction (`common/pool.go`, `common/registry.go`)
 
-Gateway connects to backend services via `ConnectBackend(name, servers, poolFactory, routers)`. Each backend is stored in `GatewayRef.Backends` map by name.
+**`common.Registry`**: Manages connections to multiple backend services. Any service can use it:
+```go
+reg := common.NewRegistry()
+reg.Dial("chatsvr", routers, common.HashRoute)
+conn := reg.RouteTo("chatsvr", key)
+```
 
-**`common.BackendPool`**: Interface with `Route(key string) ziface.IConnection`.
+For services with extra state (e.g., Gateway), embed `*common.Registry` in a wrapper struct. `Dial` and `RouteTo` are promoted automatically.
 
-**`common.Pool`**: Generic connection pool usable from any service. Features:
+**`common.Dial(service, routers, routeFn) *Pool`**: Connects to all configured instances of a backend and returns a Pool. Reads config, creates TCP clients, wires reconnection callbacks, blocks until all connections are established.
+
+**`common.Pool`**: Generic connection pool with:
 - Thread-safe connection management with `HealthyConns()`
 - Automatic reconnection with exponential backoff (1s → 2s → … → 30s)
 - Pluggable routing via `RouteFunc` (`HashRoute`, `RandomRoute`, or custom)
-- `OnDisconnect(idx)` triggers reconnect for a dead connection slot
+- 15s connection timeout (cancels via `client.Stop()`) — not dependent on Zinx retry
 
-**Usage** — connecting to a backend from any service:
-```go
-pool := common.NewPool(conns, servers, routers, common.HashRoute)
-// pool implements common.BackendPool
-```
-
-No need to define service-specific pool types — routing strategy is a function parameter.
+**`common.BackendPool`**: Interface with `Route(key string) ziface.IConnection`. `Pool` implements this.
 
 ### Configuration
 

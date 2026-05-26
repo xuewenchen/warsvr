@@ -80,6 +80,60 @@ func NewPool(conns []ziface.IConnection, servers []conf.ServerNode, routers []Ba
 	return &Pool{conns: entries, routeFn: routeFn}
 }
 
+// Dial connects to all configured instances of a backend service and returns a Pool.
+// The service name matches the key in config.yml services section.
+// Routers are registered on every connection. routeFn determines how Route() picks a connection.
+func Dial(service string, routers []BackendRouterConfig, routeFn RouteFunc) *Pool {
+	servers := conf.GlobalConfig.Services[service]
+	if len(servers) == 0 {
+		panic("no " + service + " configured")
+	}
+
+	var wg sync.WaitGroup
+	pool := &Pool{
+		conns:   make([]*connEntry, len(servers)),
+		routeFn: routeFn,
+	}
+
+	for i, svr := range servers {
+		idx := i
+		srv := svr
+
+		host, port := conf.ParseHostPort(srv.Listen)
+		client := znet.NewClient(host, port)
+
+		client.SetOnConnStart(func(conn ziface.IConnection) {
+			pool.conns[idx].mu.Lock()
+			pool.conns[idx].conn = conn
+			pool.conns[idx].healthy = true
+			pool.conns[idx].mu.Unlock()
+			zlog.Ins().InfoF("Dial: connected to %s[%s]: %s", service, srv.ID, conn.RemoteAddr())
+			wg.Done()
+		})
+		client.SetOnConnStop(func(conn ziface.IConnection) {
+			zlog.Ins().InfoF("Dial: disconnected from %s[%s]", service, srv.ID)
+			pool.OnDisconnect(idx)
+		})
+
+		for _, rc := range routers {
+			client.AddRouter(rc.MsgID, rc.Router)
+		}
+
+		pool.conns[idx] = &connEntry{
+			addr:    srv.Listen,
+			routers: routers,
+			healthy: false,
+			backoff: time.Second,
+		}
+
+		wg.Add(1)
+		client.Start()
+	}
+
+	wg.Wait()
+	return pool
+}
+
 // Route selects a backend connection using the configured routing strategy.
 func (p *Pool) Route(key string) ziface.IConnection {
 	return p.routeFn(key, p.HealthyConns())
