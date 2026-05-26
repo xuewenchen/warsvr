@@ -7,8 +7,6 @@ import (
 	"github.com/aceld/zinx/znet"
 )
 
-// PingRouter MsgId=1的路由
-
 func main() {
 
 	//1 创建一个server服务

@@ -2,9 +2,9 @@ package router
 
 import (
 	"cardwar/common"
-	"fmt"
 
 	"github.com/aceld/zinx/ziface"
+	"github.com/aceld/zinx/zlog"
 	"github.com/aceld/zinx/znet"
 )
 
@@ -13,21 +13,15 @@ type PingRouter struct {
 	znet.BaseRouter
 }
 
-// Ping Handle MsgIdPing的路由处理方法
-func (r *PingRouter) PreHandle(request ziface.IRequest) {
-	//读取客户端的数据
-	fmt.Println("PreHandle: recv from client : msgId=", request.GetMsgID(), ", data=", string(request.GetData()))
-}
+// Ping Handle
+func (this *PingRouter) Handle(request ziface.IRequest) {
 
-// Ping Handle MsgIdPing的路由处理方法
-func (r *PingRouter) Handle(request ziface.IRequest) {
-	//读取客户端的数据
-	fmt.Println("Handle: recv from client : msgId=", request.GetMsgID(), ", data=", string(request.GetData()))
-	request.GetConnection().SendMsg(common.MsgIdPong, []byte("pong...pong...pong...[FromServer]"))
-}
+	zlog.Ins().DebugF("Call PingRouter Handle")
+	// Read the data from the client first, then send back "ping...ping...ping".
+	zlog.Ins().DebugF("recv from client : msgId=%d, data=%+v, len=%d", request.GetMsgID(), string(request.GetData()), len(request.GetData()))
 
-// Ping Handle MsgIdPing的路由处理方法
-func (r *PingRouter) PostHandle(request ziface.IRequest) {
-	//读取客户端的数据
-	fmt.Println("PostHandle: recv from client : msgId=", request.GetMsgID(), ", data=", string(request.GetData()))
+	err := request.GetConnection().SendMsg(common.MsgIdPong, []byte("pong-server"))
+	if err != nil {
+		zlog.Error(err)
+	}
 }
