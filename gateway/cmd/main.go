@@ -21,26 +21,20 @@ func main() {
 		panic(err)
 	}
 
-	gwCfg := conf.GlobalConfig.Services["gateway"][0]
-
 	gw := &router.GatewayRef{
 		PlayerConns: &sync.Map{},
 	}
+	// 初始化后台服务
+	initBackendSvr(gw)
+	// 初始化websocket
+	initWebSocket(gw)
 
-	csCfgs := conf.GlobalConfig.Services["chatsvr"]
-	if len(csCfgs) == 0 {
-		panic("no ChatSvr configured")
-	}
-	gw.ConnectBackend("chatsvr", csCfgs,
-		func(conns []ziface.IConnection) router.BackendPool {
-			return router.NewChatSvrPool(conns)
-		},
-		[]router.BackendRouterConfig{
-			{MsgID: common.MsgIdLoginRsp, Router: &router.LoginRspRouter{GW: gw}},
-			{MsgID: common.MsgIdBroadcast, Router: &router.BroadcastRouter{GW: gw}},
-		},
-	)
+	// 启动
+	gw.Server.Serve()
+}
 
+func initWebSocket(gw *router.GatewayRef) {
+	gwCfg := conf.GlobalConfig.Services["gateway"][0]
 	// WS+TCP server for clients
 	_, wsPort := conf.ParseHostPort(gwCfg.WSListen)
 	tcpHost, tcpPort := conf.ParseHostPort(gwCfg.TCPListen)
@@ -69,6 +63,25 @@ func main() {
 	wsServer.AddRouter(common.MsgIdPing, &router.PingRouter{})
 	wsServer.AddRouter(common.MsgIdLogin, &router.LoginRouter{GW: gw})
 	wsServer.AddRouter(common.MsgIdChat, &router.ChatRouter{GW: gw})
+}
 
-	wsServer.Serve()
+func initBackendSvr(gw *router.GatewayRef) {
+	initChatSvr(gw)
+}
+
+func initChatSvr(gw *router.GatewayRef) {
+	csCfgs := conf.GlobalConfig.Services["chatsvr"]
+	if len(csCfgs) == 0 {
+		panic("no ChatSvr configured")
+	}
+	// init chat svr
+	gw.ConnectBackend("chatsvr", csCfgs,
+		func(conns []ziface.IConnection) router.BackendPool {
+			return router.NewChatSvrPool(conns)
+		},
+		[]router.BackendRouterConfig{
+			{MsgID: common.MsgIdLoginRsp, Router: &router.LoginRspRouter{GW: gw}},
+			{MsgID: common.MsgIdBroadcast, Router: &router.BroadcastRouter{GW: gw}},
+		},
+	)
 }
