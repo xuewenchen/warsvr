@@ -47,15 +47,14 @@ func main() {
 	csHost, csPort := parseHostPort(csCfg.Listen)
 	tcpClient := znet.NewClient(csHost, csPort)
 	tcpClient.SetOnConnStart(func(conn ziface.IConnection) {
-		gw.TCPConn = conn
+		gw.ChatSvrTCPConn = conn
 		close(tcpReady)
 		zlog.Ins().InfoF("Gateway connected to ChatSvr: %s", conn.RemoteAddr())
 	})
 	tcpClient.SetOnConnStop(func(conn ziface.IConnection) {
-		gw.TCPConn = nil
+		gw.ChatSvrTCPConn = nil
 		zlog.Ins().InfoF("Gateway disconnected from ChatSvr")
 	})
-	tcpClient.AddRouter(common.MsgIdLoginRsp, &router.LoginRspRouter{GW: gw})
 	tcpClient.AddRouter(common.MsgIdBroadcast, &router.BroadcastRouter{GW: gw})
 
 	// WS+TCP server for clients

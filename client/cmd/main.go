@@ -53,7 +53,6 @@ func main() {
 	client := znet.NewClient("127.0.0.1", 8999)
 	client.SetOnConnStart(onClientStart)
 	client.AddRouter(common.MsgIdPong, &router.PongRouter{})
-	client.AddRouter(common.MsgIdLoginRsp, &router.LoginRspRouter{})
 	client.AddRouter(common.MsgIdBroadcast, &router.BroadcastRouter{})
 
 	client.Start()
