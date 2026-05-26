@@ -7,7 +7,7 @@ import (
 )
 
 type GatewayRef struct {
-	Server         ziface.IServer
-	ChatSvrTCPConn ziface.IConnection
-	PlayerConns    *sync.Map // playerID → connID (uint64)
+	Server      ziface.IServer
+	ChatSvrPool *ChatSvrPool
+	PlayerConns *sync.Map // playerID → connID (uint64)
 }

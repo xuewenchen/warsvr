@@ -10,3 +10,6 @@ services:
     - id: chatsvr-1
       listen: 0.0.0.0:8001
       public_addr: 127.0.0.1:8001
+    - id: chatsvr-2
+      listen: 0.0.0.0:8002
+      public_addr: 127.0.0.1:8002

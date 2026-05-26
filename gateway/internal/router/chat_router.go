@@ -15,8 +15,9 @@ type ChatRouter struct {
 }
 
 func (r *ChatRouter) Handle(request ziface.IRequest) {
-	if r.GW.ChatSvrTCPConn == nil {
-		zlog.Ins().ErrorF("ChatRouter: no connection to ChatSvr")
+	var msg common.ChatMsg
+	if err := json.Unmarshal(request.GetData(), &msg); err != nil {
+		zlog.Error(err)
 		return
 	}
 
@@ -26,5 +27,6 @@ func (r *ChatRouter) Handle(request ziface.IRequest) {
 	}
 	envData, _ := json.Marshal(env)
 
-	r.GW.ChatSvrTCPConn.SendMsg(common.MsgIdChat, envData)
+	conn := r.GW.ChatSvrPool.Route(msg.PlayerID)
+	conn.SendMsg(common.MsgIdChat, envData)
 }

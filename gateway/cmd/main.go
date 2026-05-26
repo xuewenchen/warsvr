@@ -36,26 +36,45 @@ func main() {
 	}
 
 	gwCfg := conf.GlobalConfig.Services.Gateway[0]
-	csCfg := conf.GlobalConfig.Services.ChatSvr[0]
+	csCfgs := conf.GlobalConfig.Services.ChatSvr
+	if len(csCfgs) == 0 {
+		panic("no ChatSvr configured")
+	}
 
 	gw := &router.GatewayRef{
 		PlayerConns: &sync.Map{},
 	}
 
-	// TCP client → ChatSvr
-	tcpReady := make(chan struct{})
-	csHost, csPort := parseHostPort(csCfg.Listen)
-	tcpClient := znet.NewClient(csHost, csPort)
-	tcpClient.SetOnConnStart(func(conn ziface.IConnection) {
-		gw.ChatSvrTCPConn = conn
-		close(tcpReady)
-		zlog.Ins().InfoF("Gateway connected to ChatSvr: %s", conn.RemoteAddr())
-	})
-	tcpClient.SetOnConnStop(func(conn ziface.IConnection) {
-		gw.ChatSvrTCPConn = nil
-		zlog.Ins().InfoF("Gateway disconnected from ChatSvr")
-	})
-	tcpClient.AddRouter(common.MsgIdBroadcast, &router.BroadcastRouter{GW: gw})
+	// Connect to all ChatSvr instances
+	var wg sync.WaitGroup
+	csConns := make([]ziface.IConnection, len(csCfgs))
+
+	for i, csCfg := range csCfgs {
+		idx := i
+		cfg := csCfg
+
+		csHost, csPort := parseHostPort(cfg.Listen)
+		tcpClient := znet.NewClient(csHost, csPort)
+
+		tcpClient.SetOnConnStart(func(conn ziface.IConnection) {
+			csConns[idx] = conn
+			zlog.Ins().InfoF("Gateway connected to ChatSvr[%s]: %s", cfg.ID, conn.RemoteAddr())
+			wg.Done()
+		})
+		tcpClient.SetOnConnStop(func(conn ziface.IConnection) {
+			csConns[idx] = nil
+			zlog.Ins().InfoF("Gateway disconnected from ChatSvr[%s]", cfg.ID)
+		})
+
+		tcpClient.AddRouter(common.MsgIdLoginRsp, &router.LoginRspRouter{GW: gw})
+		tcpClient.AddRouter(common.MsgIdBroadcast, &router.BroadcastRouter{GW: gw})
+
+		wg.Add(1)
+		tcpClient.Start()
+	}
+
+	wg.Wait()
+	gw.ChatSvrPool = router.NewChatSvrPool(csConns)
 
 	// WS+TCP server for clients
 	_, wsPort := parseHostPort(gwCfg.WSListen)
@@ -85,10 +104,6 @@ func main() {
 	wsServer.AddRouter(common.MsgIdPing, &router.PingRouter{})
 	wsServer.AddRouter(common.MsgIdLogin, &router.LoginRouter{GW: gw})
 	wsServer.AddRouter(common.MsgIdChat, &router.ChatRouter{GW: gw})
-
-	// Start TCP client first, wait for connection
-	tcpClient.Start()
-	<-tcpReady
 
 	wsServer.Serve()
 }

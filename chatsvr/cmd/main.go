@@ -26,13 +26,29 @@ func parseHostPort(addr string) (string, int) {
 
 func main() {
 	configPath := flag.String("conf", "config.yml", "path to config file")
+	csID := flag.String("id", "", "ChatSvr ID (matches config services.chatsvr[].id)")
 	flag.Parse()
 
 	if err := conf.Load(*configPath); err != nil {
 		panic(err)
 	}
 
-	csCfg := conf.GlobalConfig.Services.ChatSvr[0]
+	var csCfg conf.ServerNode
+	if *csID != "" {
+		found := false
+		for _, cfg := range conf.GlobalConfig.Services.ChatSvr {
+			if cfg.ID == *csID {
+				csCfg = cfg
+				found = true
+				break
+			}
+		}
+		if !found {
+			panic("ChatSvr ID not found in config: " + *csID)
+		}
+	} else {
+		csCfg = conf.GlobalConfig.Services.ChatSvr[0]
+	}
 	host, port := parseHostPort(csCfg.Listen)
 
 	cfg := &zconf.Config{
