@@ -1,6 +1,7 @@
 package router
 
 import (
+	"cardwar/common"
 	"cardwar/conf"
 	"sync"
 
@@ -11,7 +12,7 @@ import (
 
 type GatewayRef struct {
 	Server      ziface.IServer
-	Backends    map[string]BackendPool
+	Backends    map[string]common.BackendPool
 	PlayerConns *sync.Map // playerID → connID (uint64)
 }
 
@@ -20,14 +21,14 @@ func (gw *GatewayRef) RouteTo(backend string, key string) ziface.IConnection {
 }
 
 // ConnectBackend connects to all server instances of a backend type and stores the pool.
-func (gw *GatewayRef) ConnectBackend(name string, servers []conf.ServerNode, poolFactory func(conns []ziface.IConnection) BackendPool, routers []BackendRouterConfig) {
+func (gw *GatewayRef) ConnectBackend(name string, servers []conf.ServerNode, poolFactory func(conns []ziface.IConnection) common.BackendPool, routers []common.BackendRouterConfig) {
 	if gw.Backends == nil {
-		gw.Backends = make(map[string]BackendPool)
+		gw.Backends = make(map[string]common.BackendPool)
 	}
 
 	var wg sync.WaitGroup
 	conns := make([]ziface.IConnection, len(servers))
-	var bp *BaseBackendPool
+	var poolRef *common.Pool
 
 	for i, svr := range servers {
 		idx := i
@@ -44,8 +45,8 @@ func (gw *GatewayRef) ConnectBackend(name string, servers []conf.ServerNode, poo
 		tcpClient.SetOnConnStop(func(conn ziface.IConnection) {
 			conns[idx] = nil
 			zlog.Ins().InfoF("Gateway disconnected from %s[%s]", name, srv.ID)
-			if bp != nil {
-				bp.onDisconnect(idx)
+			if poolRef != nil {
+				poolRef.OnDisconnect(idx)
 			}
 		})
 
@@ -59,8 +60,8 @@ func (gw *GatewayRef) ConnectBackend(name string, servers []conf.ServerNode, poo
 
 	wg.Wait()
 	pool := poolFactory(conns)
-	if hb, ok := pool.(interface{ getBase() *BaseBackendPool }); ok {
-		bp = hb.getBase()
+	if p, ok := pool.(*common.Pool); ok {
+		poolRef = p
 	}
 	gw.Backends[name] = pool
 }

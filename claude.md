@@ -32,7 +32,7 @@ Client (TCP/WS) ───> Gateway ───> ChatSvr (TCP)
 
 - **`common.Envelope`**: Internal wrapper between Gateway and ChatSvr. Contains `ConnID` (client session) and `Data` (original message as raw JSON). `ConnID=0` means broadcast.
 - **`common.LoginMsg`**, **`LoginRspMsg`**, **`ChatMsg`**, **`BroadcastMsg`**: Client-facing protocol messages, all JSON-encoded.
-- **`router.GatewayRef`** (`gateway_ref.go`): Shared state on Gateway — holds `Server` (the client-facing IServer), `Backends` (`map[string]BackendPool` for routing to different backend services), and `PlayerConns` (`sync.Map` of playerID → connID). `ConnectBackend` abstracts connecting to any backend service (ChatSvr, GameSvr, etc.) with configurable pool construction and router registration.
+- **`router.GatewayRef`** (`gateway_ref.go`): Shared state on Gateway — holds `Server` (the client-facing IServer), `Backends` (`map[string]common.BackendPool` for routing to different backend services), and `PlayerConns` (`sync.Map` of playerID → connID). `ConnectBackend` abstracts connecting to any backend service (ChatSvr, GameSvr, etc.) with configurable pool construction and router registration.
 
 ### Routing pattern
 
@@ -52,19 +52,25 @@ Each message type gets a router struct embedding `znet.BaseRouter` and implement
 3. ChatSvr checks login state, constructs a `BroadcastMsg{PlayerID, Content, Timestamp}`, wraps in `Envelope{ConnID: 0, Data}` and sends back (msgId=6).
 4. Gateway's `BroadcastRouter` sees `ConnID=0`, iterates all client connections and sends the broadcast message to every connected client.
 
-### Backend abstraction
+### Backend abstraction (`common/pool.go`)
 
-Gateway connects to backend services via `ConnectBackend(name, servers, poolFactory, routers)`. Each backend is identified by name (e.g. `"chatsvr"`) and stored in `GatewayRef.Backends` map.
+Gateway connects to backend services via `ConnectBackend(name, servers, poolFactory, routers)`. Each backend is stored in `GatewayRef.Backends` map by name.
 
-**`BackendPool`** (`backend_pool.go`): Interface with `Route(key string) ziface.IConnection`. All backend pools implement this.
+**`common.BackendPool`**: Interface with `Route(key string) ziface.IConnection`.
 
-**`BaseBackendPool`** (`base_backend_pool.go`): Generic connection pool with thread-safe connection management, automatic reconnection (exponential backoff: 1s → 2s → … → 30s), and health tracking via `HealthyConns()`. Service-specific pools embed this.
+**`common.Pool`**: Generic connection pool usable from any service. Features:
+- Thread-safe connection management with `HealthyConns()`
+- Automatic reconnection with exponential backoff (1s → 2s → … → 30s)
+- Pluggable routing via `RouteFunc` (`HashRoute`, `RandomRoute`, or custom)
+- `OnDisconnect(idx)` triggers reconnect for a dead connection slot
 
-**`ChatSvrPool`** (`chatsvr_pool.go`): Embeds `BaseBackendPool`, implements hash-based sticky routing by playerID. Reconnection uses the server address and router config from the original `ConnectBackend` call.
+**Usage** — connecting to a backend from any service:
+```go
+pool := common.NewPool(conns, servers, routers, common.HashRoute)
+// pool implements common.BackendPool
+```
 
-Adding a new backend (e.g. GameSvr) requires:
-1. A new pool type embedding `BaseBackendPool` with a custom `Route()` method
-2. One `ConnectBackend` call in `initBackendSvr`
+No need to define service-specific pool types — routing strategy is a function parameter.
 
 ### Configuration
 

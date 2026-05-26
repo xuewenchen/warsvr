@@ -6,7 +6,9 @@
       "Bash(go build *)",
       "Bash(go vet *)",
       "Bash(go run *)",
-      "Bash(taskkill /F /IM main.exe)"
+      "Bash(taskkill /F /IM main.exe)",
+      "Bash(netstat -ano)",
+      "Bash(taskkill *)"
     ]
   }
 }
