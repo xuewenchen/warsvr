@@ -16,14 +16,15 @@ message LoginRsp {
 }
 
 message ChatReq {
-  string player_id = 1;
-  string content   = 2;
+  string content = 1;
+  string target_player_id = 2;  // empty = global, non-empty = private target
 }
 
-message BroadcastPush {
-  string player_id = 1;
-  string content   = 2;
-  int64  timestamp = 3;
+message ChatPush {
+  string sender_player_id = 1;
+  string content = 2;
+  int64 timestamp = 3;
+  string target_player_id = 4;  // empty = global, non-empty = private recipient
 }
 
 // ----- Gateway ↔ ChatSvr (internal) -----

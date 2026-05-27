@@ -29,20 +29,15 @@ func main() {
 
 	routeIndex := router.BuildRouteIndex(conf.GlobalConfig.Gateway)
 
+	// 初始化网关服务
 	gw := &router.GatewayRef{
 		Registry:    pkg.NewRegistry(),
 		PlayerConns: &sync.Map{},
 	}
 	gw.SetRoutes(routeIndex)
 
-	rspRouter := &router.ResponseRouter{GW: gw}
-	for backend, rc := range conf.GlobalConfig.Gateway.Routes {
-		routers := make([]pkg.BackendRouterConfig, len(rc.Response))
-		for i, msgID := range rc.Response {
-			routers[i] = pkg.BackendRouterConfig{MsgID: msgID, Router: rspRouter}
-		}
-		gw.Dial(backend, routers, pkg.HashRoute)
-	}
+	// 注册TCP响应路由
+	registerResponseRouter(gw)
 
 	if _, err := conf.Watch(*configPath, func(cfg *conf.Config) {
 		newIndex := router.BuildRouteIndex(cfg.Gateway)
@@ -116,11 +111,29 @@ func initWebSocket(gw *router.GatewayRef, gwID string) {
 
 	wsServer.AddRouter(protocol.MsgIdPing, &router.PingRouter{})
 
+	// 注册websocket消息转发路由
+	registerForwardRouter(gw)
+}
+
+// 注册backend TCP消息应该用哪个router转发到客户端
+func registerResponseRouter(gw *router.GatewayRef) {
+	rspRouter := &router.ResponseRouter{GW: gw}
+	for backend, rc := range conf.GlobalConfig.Gateway.Routes {
+		routers := make([]pkg.BackendRouterConfig, len(rc.Response))
+		for i, msgID := range rc.Response {
+			routers[i] = pkg.BackendRouterConfig{MsgID: msgID, Router: rspRouter}
+		}
+		gw.Dial(backend, routers, pkg.HashRoute)
+	}
+}
+
+// 注册websocket消息应该转发到哪个后端服务
+func registerForwardRouter(gw *router.GatewayRef) {
 	fwdRouter := &router.ForwardRouter{GW: gw}
 	for msgID := uint32(1); msgID <= maxMsgID; msgID++ {
 		if msgID == protocol.MsgIdPing {
 			continue // Ping is handled locally
 		}
-		wsServer.AddRouter(msgID, fwdRouter)
+		gw.Server.AddRouter(msgID, fwdRouter)
 	}
 }

@@ -126,11 +126,11 @@ func (x *LoginRsp) GetMessage() string {
 }
 
 type ChatReq struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PlayerId      string                 `protobuf:"bytes,1,opt,name=player_id,json=playerId,proto3" json:"player_id,omitempty"`
-	Content       string                 `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Content        string                 `protobuf:"bytes,1,opt,name=content,proto3" json:"content,omitempty"`
+	TargetPlayerId string                 `protobuf:"bytes,2,opt,name=target_player_id,json=targetPlayerId,proto3" json:"target_player_id,omitempty"` // empty = global, non-empty = private target
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *ChatReq) Reset() {
@@ -163,13 +163,6 @@ func (*ChatReq) Descriptor() ([]byte, []int) {
 	return file_cardwar_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *ChatReq) GetPlayerId() string {
-	if x != nil {
-		return x.PlayerId
-	}
-	return ""
-}
-
 func (x *ChatReq) GetContent() string {
 	if x != nil {
 		return x.Content
@@ -177,29 +170,37 @@ func (x *ChatReq) GetContent() string {
 	return ""
 }
 
-type BroadcastPush struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PlayerId      string                 `protobuf:"bytes,1,opt,name=player_id,json=playerId,proto3" json:"player_id,omitempty"`
-	Content       string                 `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
-	Timestamp     int64                  `protobuf:"varint,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+func (x *ChatReq) GetTargetPlayerId() string {
+	if x != nil {
+		return x.TargetPlayerId
+	}
+	return ""
 }
 
-func (x *BroadcastPush) Reset() {
-	*x = BroadcastPush{}
+type ChatPush struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	SenderPlayerId string                 `protobuf:"bytes,1,opt,name=sender_player_id,json=senderPlayerId,proto3" json:"sender_player_id,omitempty"`
+	Content        string                 `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
+	Timestamp      int64                  `protobuf:"varint,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	TargetPlayerId string                 `protobuf:"bytes,4,opt,name=target_player_id,json=targetPlayerId,proto3" json:"target_player_id,omitempty"` // empty = global, non-empty = private recipient
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *ChatPush) Reset() {
+	*x = ChatPush{}
 	mi := &file_cardwar_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *BroadcastPush) String() string {
+func (x *ChatPush) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*BroadcastPush) ProtoMessage() {}
+func (*ChatPush) ProtoMessage() {}
 
-func (x *BroadcastPush) ProtoReflect() protoreflect.Message {
+func (x *ChatPush) ProtoReflect() protoreflect.Message {
 	mi := &file_cardwar_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -211,30 +212,37 @@ func (x *BroadcastPush) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use BroadcastPush.ProtoReflect.Descriptor instead.
-func (*BroadcastPush) Descriptor() ([]byte, []int) {
+// Deprecated: Use ChatPush.ProtoReflect.Descriptor instead.
+func (*ChatPush) Descriptor() ([]byte, []int) {
 	return file_cardwar_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *BroadcastPush) GetPlayerId() string {
+func (x *ChatPush) GetSenderPlayerId() string {
 	if x != nil {
-		return x.PlayerId
+		return x.SenderPlayerId
 	}
 	return ""
 }
 
-func (x *BroadcastPush) GetContent() string {
+func (x *ChatPush) GetContent() string {
 	if x != nil {
 		return x.Content
 	}
 	return ""
 }
 
-func (x *BroadcastPush) GetTimestamp() int64 {
+func (x *ChatPush) GetTimestamp() int64 {
 	if x != nil {
 		return x.Timestamp
 	}
 	return 0
+}
+
+func (x *ChatPush) GetTargetPlayerId() string {
+	if x != nil {
+		return x.TargetPlayerId
+	}
+	return ""
 }
 
 type Envelope struct {
@@ -307,14 +315,15 @@ const file_cardwar_proto_rawDesc = "" +
 	"\bLoginRsp\x12\x1b\n" +
 	"\tplayer_id\x18\x01 \x01(\tR\bplayerId\x12\x18\n" +
 	"\asuccess\x18\x02 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x03 \x01(\tR\amessage\"@\n" +
-	"\aChatReq\x12\x1b\n" +
-	"\tplayer_id\x18\x01 \x01(\tR\bplayerId\x12\x18\n" +
-	"\acontent\x18\x02 \x01(\tR\acontent\"d\n" +
-	"\rBroadcastPush\x12\x1b\n" +
-	"\tplayer_id\x18\x01 \x01(\tR\bplayerId\x12\x18\n" +
+	"\amessage\x18\x03 \x01(\tR\amessage\"M\n" +
+	"\aChatReq\x12\x18\n" +
+	"\acontent\x18\x01 \x01(\tR\acontent\x12(\n" +
+	"\x10target_player_id\x18\x02 \x01(\tR\x0etargetPlayerId\"\x96\x01\n" +
+	"\bChatPush\x12(\n" +
+	"\x10sender_player_id\x18\x01 \x01(\tR\x0esenderPlayerId\x12\x18\n" +
 	"\acontent\x18\x02 \x01(\tR\acontent\x12\x1c\n" +
-	"\ttimestamp\x18\x03 \x01(\x03R\ttimestamp\"\xad\x01\n" +
+	"\ttimestamp\x18\x03 \x01(\x03R\ttimestamp\x12(\n" +
+	"\x10target_player_id\x18\x04 \x01(\tR\x0etargetPlayerId\"\xad\x01\n" +
 	"\bEnvelope\x12\x17\n" +
 	"\aconn_id\x18\x01 \x01(\x04R\x06connId\x12\x12\n" +
 	"\x04data\x18\x02 \x01(\fR\x04data\x127\n" +
@@ -337,12 +346,12 @@ func file_cardwar_proto_rawDescGZIP() []byte {
 
 var file_cardwar_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_cardwar_proto_goTypes = []any{
-	(*LoginReq)(nil),      // 0: pb.LoginReq
-	(*LoginRsp)(nil),      // 1: pb.LoginRsp
-	(*ChatReq)(nil),       // 2: pb.ChatReq
-	(*BroadcastPush)(nil), // 3: pb.BroadcastPush
-	(*Envelope)(nil),      // 4: pb.Envelope
-	nil,                   // 5: pb.Envelope.ConnTagsEntry
+	(*LoginReq)(nil), // 0: pb.LoginReq
+	(*LoginRsp)(nil), // 1: pb.LoginRsp
+	(*ChatReq)(nil),  // 2: pb.ChatReq
+	(*ChatPush)(nil), // 3: pb.ChatPush
+	(*Envelope)(nil), // 4: pb.Envelope
+	nil,              // 5: pb.Envelope.ConnTagsEntry
 }
 var file_cardwar_proto_depIdxs = []int32{
 	5, // 0: pb.Envelope.conn_tags:type_name -> pb.Envelope.ConnTagsEntry

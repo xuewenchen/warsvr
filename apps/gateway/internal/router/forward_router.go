@@ -36,6 +36,9 @@ func (r *ForwardRouter) Handle(request ziface.IRequest) {
 		ConnId: request.GetConnection().GetConnID(),
 		Data:   request.GetData(),
 	}
+	if pid, err := request.GetConnection().GetProperty("playerId"); err == nil {
+		env.ConnTags = map[string]string{"player_id": pid.(string)}
+	}
 	envData, _ := proto.Marshal(env)
 
 	conn := r.GW.RouteTo(route.Backend, routeKey)

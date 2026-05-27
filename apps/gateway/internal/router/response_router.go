@@ -26,6 +26,22 @@ func (r *ResponseRouter) Handle(request ziface.IRequest) {
 		return
 	}
 
+	// Private routing: check target_player_id in conn_tags
+	if targetPID := env.ConnTags["target_player_id"]; targetPID != "" {
+		val, ok := r.GW.PlayerConns.Load(targetPID)
+		if !ok {
+			zlog.Ins().ErrorF("ResponseRouter: target player not connected: %s", targetPID)
+			return
+		}
+		wsConn, err := r.GW.Server.GetConnMgr().Get(val.(uint64))
+		if err != nil {
+			zlog.Ins().ErrorF("ResponseRouter: target conn not found for player %s: %v", targetPID, err)
+			return
+		}
+		wsConn.SendMsg(msgID, env.Data)
+		return
+	}
+
 	if env.ConnId != 0 {
 		wsConn, err := r.GW.Server.GetConnMgr().Get(env.ConnId)
 		if err != nil {

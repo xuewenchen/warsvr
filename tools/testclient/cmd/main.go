@@ -22,8 +22,7 @@ func chatLoop(conn ziface.IConnection) {
 	time.Sleep(2 * time.Second)
 	for i := 0; ; i++ {
 		msg := &pb.ChatReq{
-			PlayerId: playerID,
-			Content:  fmt.Sprintf("Hello #%d from %s", i, playerID),
+			Content: fmt.Sprintf("Hello #%d from %s", i, playerID),
 		}
 		data, _ := proto.Marshal(msg)
 		if err := conn.SendMsg(protocol.MsgIdChat, data); err != nil {
@@ -71,7 +70,7 @@ func main() {
 	client := znet.NewWsClient("127.0.0.1", 9000, znet.WithUrl(wsURL))
 	client.SetOnConnStart(onClientStart)
 	client.AddRouter(protocol.MsgIdPong, &router.PongRouter{})
-	client.AddRouter(protocol.MsgIdBroadcast, &router.BroadcastRouter{})
+	client.AddRouter(protocol.MsgIdChatPush, &router.ChatPushRouter{})
 
 	client.Start()
 	select {}

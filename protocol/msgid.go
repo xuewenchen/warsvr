@@ -9,6 +9,6 @@ const (
 	// ===== chat
 	MsgIdChat = 4
 
-	// ===== broadcast from backend to clients
-	MsgIdBroadcast = 6
+	// ===== chat push from backend to clients
+	MsgIdChatPush = 6
 )

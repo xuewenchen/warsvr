@@ -17,11 +17,11 @@ type BackendRouteInfo struct {
 // GatewayRef holds Gateway-specific state. Embeds Registry for backend connection management.
 type GatewayRef struct {
 	*pkg.Registry
-	Server        ziface.IServer
-	PlayerConns   *sync.Map // playerID → connID (uint64)
+	Server      ziface.IServer
+	PlayerConns *sync.Map // playerID → connID (uint64)
 
-	mu            sync.RWMutex
-	routes        map[uint32]*BackendRouteInfo
+	mu     sync.RWMutex
+	routes map[uint32]*BackendRouteInfo
 }
 
 // RouteFor returns the backend route for a given message ID, or nil if not found.

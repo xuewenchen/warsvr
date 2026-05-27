@@ -34,13 +34,29 @@ Client (WebSocket + JWT) ───> Gateway ───> ChatSvr (TCP)
 | 3     | Login      | _deprecated — JWT auth replaces this_ |
 | 4     | Chat       | Client → Gateway → ChatSvr         |
 | 5     | LoginRsp   | _deprecated — JWT auth replaces this_ |
-| 6     | Broadcast  | ChatSvr → Gateway → All Clients    |
+| 6     | ChatPush   | ChatSvr/any backend → Gateway → Client(s) |
+
+### Chat protocol
+
+Chat supports **global** and **private** messaging through a single request/response pair.
+
+```
+Client A ── ChatReq{content, target_player_id=""} ──> ChatSvr ──> ChatPush (global) ──> all clients
+Client A ── ChatReq{content, target_player_id="B"} ──> ChatSvr ──> ChatPush (private) ──> Client B only
+Server   ── ChatPush ──> all clients (system broadcast)
+```
+
+**ChatReq** (msgID=4, client→server): `{content, target_player_id}` — `target_player_id` empty = global, non-empty = private recipient. The sender's `player_id` is NOT in the message body; ForwardRouter auto-injects it into Envelope `conn_tags["player_id"]`.
+
+**ChatPush** (msgID=6, server→client): `{sender_player_id, content, timestamp, target_player_id}` — `target_player_id` lets the client distinguish global messages from private messages directed at them.
+
+**Private routing**: ChatSvr sets `conn_tags["target_player_id"] = "B"` in the Envelope. Gateway's ResponseRouter looks up `PlayerConns` and delivers to that specific player. Global messages use `conn_id=0` (broadcast).
 
 ### Key types
 
-- **`pb.Envelope`** (`protocol/proto/cardwar.proto`): Internal wrapper between Gateway and backends. Contains `conn_id` (client session), `data` (raw protobuf bytes), and `conn_tags` (metadata the backend wants Gateway to set on the client connection, e.g. `{"playerId": "p1"}`). `conn_id=0` means broadcast.
+- **`pb.Envelope`** (`protocol/proto/cardwar.proto`): Internal wrapper between Gateway and backends. Contains `conn_id` (client session, 0=broadcast), `data` (raw protobuf bytes), and `conn_tags` (key-value metadata). `conn_tags["player_id"]` is auto-set by ForwardRouter for sender identity; `conn_tags["target_player_id"]` triggers private routing in ResponseRouter.
 - **`pb.LoginReq`**, **`pb.LoginRsp`**: Deprecated — replaced by JWT auth at Gateway connection level.
-- **`pb.ChatReq`**, **`pb.BroadcastPush`**: Client-facing protocol messages defined in protobuf.
+- **`pb.ChatReq`**, **`pb.ChatPush`**: Client-facing protobuf messages. `ChatReq{content, target_player_id}` for input; `ChatPush{sender_player_id, content, timestamp, target_player_id}` for output.
 - **`router.GatewayRef`** (`apps/gateway/internal/router/gateway_ref.go`): Shared state on Gateway — embeds `*pkg.Registry` for backend connection management (Dial/RouteTo), holds `Server` (the client-facing IServer), `PlayerConns` (`sync.Map` of playerID → connID), and the forward route index for msgID→backend lookup. Thread-safe route table via `sync.RWMutex`.
 
 ### Gateway routing (config-driven, generic)

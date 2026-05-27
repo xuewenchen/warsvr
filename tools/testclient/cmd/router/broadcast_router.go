@@ -9,15 +9,19 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type BroadcastRouter struct {
+type ChatPushRouter struct {
 	znet.BaseRouter
 }
 
-func (r *BroadcastRouter) Handle(request ziface.IRequest) {
-	var msg pb.BroadcastPush
+func (r *ChatPushRouter) Handle(request ziface.IRequest) {
+	var msg pb.ChatPush
 	if err := proto.Unmarshal(request.GetData(), &msg); err != nil {
-		fmt.Println("Broadcast parse error:", err)
+		fmt.Println("ChatPush parse error:", err)
 		return
 	}
-	fmt.Printf("[Broadcast] %s: %s\n", msg.PlayerId, msg.Content)
+	if msg.TargetPlayerId != "" {
+		fmt.Printf("[Private] %s -> %s: %s\n", msg.SenderPlayerId, msg.TargetPlayerId, msg.Content)
+	} else {
+		fmt.Printf("[Global] %s: %s\n", msg.SenderPlayerId, msg.Content)
+	}
 }

@@ -28,17 +28,33 @@ func (r *ChatRouter) Handle(request ziface.IRequest) {
 		return
 	}
 
-	bcMsg := &pb.BroadcastPush{
-		PlayerId:  chatReq.PlayerId,
-		Content:   chatReq.Content,
-		Timestamp: time.Now().Unix(),
+	senderPID := env.ConnTags["player_id"]
+
+	push := &pb.ChatPush{
+		SenderPlayerId: senderPID,
+		Content:        chatReq.Content,
+		Timestamp:      time.Now().Unix(),
+		TargetPlayerId: chatReq.TargetPlayerId,
 	}
-	bcData, _ := proto.Marshal(bcMsg)
+	pushData, _ := proto.Marshal(push)
 
-	bcEnv := &pb.Envelope{ConnId: 0, Data: bcData}
-	bcEnvData, _ := proto.Marshal(bcEnv)
+	var pushEnv *pb.Envelope
+	if chatReq.TargetPlayerId != "" {
+		// Private: route to target player via Gateway
+		pushEnv = &pb.Envelope{
+			ConnId: 0,
+			Data:   pushData,
+			ConnTags: map[string]string{
+				"target_player_id": chatReq.TargetPlayerId,
+			},
+		}
+		zlog.Ins().InfoF("Chat private: %s -> %s: %s", senderPID, chatReq.TargetPlayerId, chatReq.Content)
+	} else {
+		// Global: broadcast to all
+		pushEnv = &pb.Envelope{ConnId: 0, Data: pushData}
+		zlog.Ins().InfoF("Chat global: %s: %s", senderPID, chatReq.Content)
+	}
 
-	request.GetConnection().SendMsg(protocol.MsgIdBroadcast, bcEnvData)
-
-	zlog.Ins().InfoF("Broadcast from %s: %s", chatReq.PlayerId, chatReq.Content)
+	pushEnvData, _ := proto.Marshal(pushEnv)
+	request.GetConnection().SendMsg(protocol.MsgIdChatPush, pushEnvData)
 }
