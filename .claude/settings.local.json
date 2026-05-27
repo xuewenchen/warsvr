@@ -35,7 +35,9 @@
       "Bash(gofmt -w apps/gateway/internal/router/ping_router.go conf/config.go pkg/const.go)",
       "Bash(go test *)",
       "Bash(awk '{print $5}')",
-      "Bash(gofmt -w pkg/broadcast_test.go pkg/pool_test.go pkg/errors_test.go pkg/auth/jwt_test.go conf/config_test.go apps/gateway/internal/router/gateway_ref_test.go apps/chatsvr/internal/router/chat_router_test.go)"
+      "Bash(gofmt -w pkg/broadcast_test.go pkg/pool_test.go pkg/errors_test.go pkg/auth/jwt_test.go conf/config_test.go apps/gateway/internal/router/gateway_ref_test.go apps/chatsvr/internal/router/chat_router_test.go)",
+      "Bash(chmod +x *)",
+      "Bash(./scripts/build.bat)"
     ]
   }
 }
