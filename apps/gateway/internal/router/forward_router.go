@@ -3,6 +3,7 @@ package router
 import (
 	"cardwar/protocol/pb"
 	"fmt"
+	"strconv"
 
 	"github.com/aceld/zinx/ziface"
 	"github.com/aceld/zinx/zlog"
@@ -37,7 +38,7 @@ func (r *ForwardRouter) Handle(request ziface.IRequest) {
 		Data:   request.GetData(),
 	}
 	if pid, err := request.GetConnection().GetProperty("playerId"); err == nil {
-		env.ConnTags = map[string]string{"player_id": pid.(string)}
+		env.ConnTags = map[string]string{"player_id": strconv.FormatInt(pid.(int64), 10)}
 	}
 	envData, _ := proto.Marshal(env)
 
@@ -52,7 +53,7 @@ func (r *ForwardRouter) Handle(request ziface.IRequest) {
 func (r *ForwardRouter) resolveRouteKey(conn ziface.IConnection, route *BackendRouteInfo) string {
 	if route.RouteKey == "playerId" {
 		if pid, err := conn.GetProperty("playerId"); err == nil {
-			return pid.(string)
+			return strconv.FormatInt(pid.(int64), 10)
 		}
 	}
 	// Fall back to connId when playerId is not yet set (e.g., login message)

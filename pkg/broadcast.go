@@ -2,6 +2,7 @@ package pkg
 
 import (
 	"cardwar/protocol/pb"
+	"strconv"
 
 	"github.com/aceld/zinx/ziface"
 	"google.golang.org/protobuf/proto"
@@ -38,11 +39,11 @@ func (b *Broadcaster) ToAll(msgID uint32, payload []byte) {
 // ToPlayer sends a push message to a specific player across all known Gateways.
 // Each Gateway's ResponseRouter checks its own PlayerConns and delivers only if
 // the target is connected locally.
-func (b *Broadcaster) ToPlayer(msgID uint32, targetPlayerID string, payload []byte) {
+func (b *Broadcaster) ToPlayer(msgID uint32, targetPlayerID int64, payload []byte) {
 	env := &pb.Envelope{
 		ConnId:   0,
 		Data:     payload,
-		ConnTags: map[string]string{"target_player_id": targetPlayerID},
+		ConnTags: map[string]string{"target_player_id": strconv.FormatInt(targetPlayerID, 10)},
 	}
 	envData, _ := proto.Marshal(env)
 	b.sendToAll(msgID, envData)

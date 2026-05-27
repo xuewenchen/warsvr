@@ -23,7 +23,7 @@ const (
 
 type LoginReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	PlayerId      string                 `protobuf:"bytes,1,opt,name=player_id,json=playerId,proto3" json:"player_id,omitempty"`
+	PlayerId      int64                  `protobuf:"varint,1,opt,name=player_id,json=playerId,proto3" json:"player_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -58,16 +58,16 @@ func (*LoginReq) Descriptor() ([]byte, []int) {
 	return file_cardwar_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *LoginReq) GetPlayerId() string {
+func (x *LoginReq) GetPlayerId() int64 {
 	if x != nil {
 		return x.PlayerId
 	}
-	return ""
+	return 0
 }
 
 type LoginRsp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	PlayerId      string                 `protobuf:"bytes,1,opt,name=player_id,json=playerId,proto3" json:"player_id,omitempty"`
+	PlayerId      int64                  `protobuf:"varint,1,opt,name=player_id,json=playerId,proto3" json:"player_id,omitempty"`
 	Success       bool                   `protobuf:"varint,2,opt,name=success,proto3" json:"success,omitempty"`
 	Message       string                 `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -104,11 +104,11 @@ func (*LoginRsp) Descriptor() ([]byte, []int) {
 	return file_cardwar_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *LoginRsp) GetPlayerId() string {
+func (x *LoginRsp) GetPlayerId() int64 {
 	if x != nil {
 		return x.PlayerId
 	}
-	return ""
+	return 0
 }
 
 func (x *LoginRsp) GetSuccess() bool {
@@ -128,7 +128,7 @@ func (x *LoginRsp) GetMessage() string {
 type ChatReq struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	Content        string                 `protobuf:"bytes,1,opt,name=content,proto3" json:"content,omitempty"`
-	TargetPlayerId string                 `protobuf:"bytes,2,opt,name=target_player_id,json=targetPlayerId,proto3" json:"target_player_id,omitempty"` // empty = global, non-empty = private target
+	TargetPlayerId int64                  `protobuf:"varint,2,opt,name=target_player_id,json=targetPlayerId,proto3" json:"target_player_id,omitempty"` // 0 = global, non-zero = private target
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -170,19 +170,19 @@ func (x *ChatReq) GetContent() string {
 	return ""
 }
 
-func (x *ChatReq) GetTargetPlayerId() string {
+func (x *ChatReq) GetTargetPlayerId() int64 {
 	if x != nil {
 		return x.TargetPlayerId
 	}
-	return ""
+	return 0
 }
 
 type ChatResp struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
-	SenderPlayerId string                 `protobuf:"bytes,1,opt,name=sender_player_id,json=senderPlayerId,proto3" json:"sender_player_id,omitempty"`
+	SenderPlayerId int64                  `protobuf:"varint,1,opt,name=sender_player_id,json=senderPlayerId,proto3" json:"sender_player_id,omitempty"`
 	Content        string                 `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
 	Timestamp      int64                  `protobuf:"varint,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
-	TargetPlayerId string                 `protobuf:"bytes,4,opt,name=target_player_id,json=targetPlayerId,proto3" json:"target_player_id,omitempty"` // empty = global, non-empty = private recipient
+	TargetPlayerId int64                  `protobuf:"varint,4,opt,name=target_player_id,json=targetPlayerId,proto3" json:"target_player_id,omitempty"` // 0 = global, non-zero = private recipient
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -217,11 +217,11 @@ func (*ChatResp) Descriptor() ([]byte, []int) {
 	return file_cardwar_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *ChatResp) GetSenderPlayerId() string {
+func (x *ChatResp) GetSenderPlayerId() int64 {
 	if x != nil {
 		return x.SenderPlayerId
 	}
-	return ""
+	return 0
 }
 
 func (x *ChatResp) GetContent() string {
@@ -238,11 +238,11 @@ func (x *ChatResp) GetTimestamp() int64 {
 	return 0
 }
 
-func (x *ChatResp) GetTargetPlayerId() string {
+func (x *ChatResp) GetTargetPlayerId() int64 {
 	if x != nil {
 		return x.TargetPlayerId
 	}
-	return ""
+	return 0
 }
 
 type Envelope struct {
@@ -311,19 +311,19 @@ const file_cardwar_proto_rawDesc = "" +
 	"\n" +
 	"\rcardwar.proto\x12\x02pb\"'\n" +
 	"\bLoginReq\x12\x1b\n" +
-	"\tplayer_id\x18\x01 \x01(\tR\bplayerId\"[\n" +
+	"\tplayer_id\x18\x01 \x01(\x03R\bplayerId\"[\n" +
 	"\bLoginRsp\x12\x1b\n" +
-	"\tplayer_id\x18\x01 \x01(\tR\bplayerId\x12\x18\n" +
+	"\tplayer_id\x18\x01 \x01(\x03R\bplayerId\x12\x18\n" +
 	"\asuccess\x18\x02 \x01(\bR\asuccess\x12\x18\n" +
 	"\amessage\x18\x03 \x01(\tR\amessage\"M\n" +
 	"\aChatReq\x12\x18\n" +
 	"\acontent\x18\x01 \x01(\tR\acontent\x12(\n" +
-	"\x10target_player_id\x18\x02 \x01(\tR\x0etargetPlayerId\"\x96\x01\n" +
+	"\x10target_player_id\x18\x02 \x01(\x03R\x0etargetPlayerId\"\x96\x01\n" +
 	"\bChatResp\x12(\n" +
-	"\x10sender_player_id\x18\x01 \x01(\tR\x0esenderPlayerId\x12\x18\n" +
+	"\x10sender_player_id\x18\x01 \x01(\x03R\x0esenderPlayerId\x12\x18\n" +
 	"\acontent\x18\x02 \x01(\tR\acontent\x12\x1c\n" +
 	"\ttimestamp\x18\x03 \x01(\x03R\ttimestamp\x12(\n" +
-	"\x10target_player_id\x18\x04 \x01(\tR\x0etargetPlayerId\"\xad\x01\n" +
+	"\x10target_player_id\x18\x04 \x01(\x03R\x0etargetPlayerId\"\xad\x01\n" +
 	"\bEnvelope\x12\x17\n" +
 	"\aconn_id\x18\x01 \x01(\x04R\x06connId\x12\x12\n" +
 	"\x04data\x18\x02 \x01(\fR\x04data\x127\n" +

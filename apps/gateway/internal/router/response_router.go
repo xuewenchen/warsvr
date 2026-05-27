@@ -2,6 +2,7 @@ package router
 
 import (
 	"cardwar/protocol/pb"
+	"strconv"
 
 	"github.com/aceld/zinx/ziface"
 	"github.com/aceld/zinx/zlog"
@@ -67,7 +68,8 @@ func (r *ResponseRouter) applyConnTags(conn ziface.IConnection, tags map[string]
 	for k, v := range tags {
 		conn.SetProperty(k, v)
 	}
-	if pid, ok := tags["playerId"]; ok {
+	if pidStr, ok := tags["playerId"]; ok {
+		pid, _ := strconv.ParseInt(pidStr, 10, 64)
 		r.GW.PlayerConns.Store(pid, conn.GetConnID())
 	}
 }

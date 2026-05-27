@@ -172,8 +172,8 @@ go run ./apps/gateway/cmd/main.go -conf config.yml
 go run ./apps/gateway/cmd/main.go -conf config.yml -id gateway-1  # specify instance by ID
 
 # Terminal 3: Start test clients (WebSocket, multiple instances, different player IDs)
-go run ./tools/testclient/cmd/main.go player1
-go run ./tools/testclient/cmd/main.go player2
+go run ./tools/testclient/cmd/main.go 1001
+go run ./tools/testclient/cmd/main.go 1002
 ```
 
 Both ChatSvr and Gateway support an optional `-id` flag to select which config entry to use. If omitted, the first entry in the config array is used.

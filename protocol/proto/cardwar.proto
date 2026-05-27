@@ -6,28 +6,28 @@ option go_package = "cardwar/protocol/pb";
 // ----- Client ↔ Gateway -----
 
 message LoginReq {
-  string player_id = 1;
+  int64 player_id = 1;
 }
 
 message LoginRsp {
-  string player_id = 1;
-  bool   success   = 2;
+  int64 player_id = 1;
+  bool  success   = 2;
   string message   = 3;
 }
 
 message ChatReq {
   string content = 1;
-  string target_player_id = 2;  // empty = global, non-empty = private target
+  int64 target_player_id = 2;  // 0 = global, non-zero = private target
 }
 
 message ChatResp {
-  string sender_player_id = 1;
+  int64 sender_player_id = 1;
   string content = 2;
   int64 timestamp = 3;
-  string target_player_id = 4;  // empty = global, non-empty = private recipient
+  int64 target_player_id = 4;  // 0 = global, non-zero = private recipient
 }
 
-// ----- Gateway ↔ ChatSvr (internal) -----
+// ----- Gateway ↔ Backend (internal) -----
 
 message Envelope {
   uint64 conn_id = 1;

@@ -81,7 +81,7 @@ func initWebSocket(gw *router.GatewayRef, gwID string) {
 			return pkg.ErrUnauthorized("invalid token")
 		}
 		pendingAuths.Store(r.RemoteAddr, playerID)
-		zlog.Ins().InfoF("Gateway: JWT validated for player %s from %s", playerID, r.RemoteAddr)
+		zlog.Ins().InfoF("Gateway: JWT validated for player %d from %s", playerID, r.RemoteAddr)
 		return nil
 	})
 
@@ -94,10 +94,10 @@ func initWebSocket(gw *router.GatewayRef, gwID string) {
 			conn.Stop()
 			return
 		}
-		playerID := val.(string)
+		playerID := val.(int64)
 		conn.SetProperty("playerId", playerID)
 		gw.PlayerConns.Store(playerID, conn.GetConnID())
-		zlog.Ins().InfoF("Client connected: connID=%d, player=%s, addr=%s", conn.GetConnID(), playerID, addr)
+		zlog.Ins().InfoF("Client connected: connID=%d, player=%d, addr=%s", conn.GetConnID(), playerID, addr)
 	})
 
 	wsServer.SetOnConnStop(func(conn ziface.IConnection) {
