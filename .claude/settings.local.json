@@ -32,7 +32,10 @@
       "Bash(sed -i 's/func \\(r \\\\*Registry\\) Dial\\(service string, routers \\\\[\\\\]BackendRouterConfig, routeFn RouteFunc\\) {/func \\(r *Registry\\) Dial\\(service string, routers []BackendRouterConfig, routeFn RouteFunc, registerMsgID uint32\\) {/' pkg/registry.go)",
       "Bash(sed -i 's/pool := Dial\\(service, routers, routeFn\\)/pool := Dial\\(service, routers, routeFn, registerMsgID\\)/' pkg/registry.go)",
       "Bash(gofmt -l .)",
-      "Bash(gofmt -w apps/gateway/internal/router/ping_router.go conf/config.go pkg/const.go)"
+      "Bash(gofmt -w apps/gateway/internal/router/ping_router.go conf/config.go pkg/const.go)",
+      "Bash(go test *)",
+      "Bash(awk '{print $5}')",
+      "Bash(gofmt -w pkg/broadcast_test.go pkg/pool_test.go pkg/errors_test.go pkg/auth/jwt_test.go conf/config_test.go apps/gateway/internal/router/gateway_ref_test.go apps/chatsvr/internal/router/chat_router_test.go)"
     ]
   }
 }

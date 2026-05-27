@@ -15,7 +15,7 @@ import (
 
 type ChatRouter struct {
 	znet.BaseRouter
-	BC *pkg.Broadcaster
+	BC pkg.Broadcaster
 }
 
 func (r *ChatRouter) Handle(request ziface.IRequest) {
