@@ -1,9 +1,11 @@
 package router
 
 import (
+	"cardwar/protocol"
 	"cardwar/protocol/pb"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/aceld/zinx/ziface"
 	"github.com/aceld/zinx/zlog"
@@ -45,9 +47,30 @@ func (r *ForwardRouter) Handle(request ziface.IRequest) {
 	conn := r.GW.RouteTo(route.Backend, routeKey)
 	if conn == nil {
 		zlog.Ins().ErrorF("ForwardRouter: no healthy backend for %s msgID=%d", route.Backend, msgID)
+		r.sendError(request, msgID)
 		return
 	}
 	conn.SendMsg(msgID, envData)
+}
+
+func (r *ForwardRouter) sendError(request ziface.IRequest, reqMsgID uint32) {
+	// Map request msgID to response msgID for the error response.
+	// Convention: application request msgIDs have a +1 response msgID.
+	var respMsgID uint32
+	switch reqMsgID {
+	case protocol.MsgIdChatReq:
+		respMsgID = protocol.MsgIdChatResp
+	default:
+		respMsgID = reqMsgID + 1
+	}
+
+	errResp := &pb.ChatResp{
+		SenderPlayerId: -1,
+		Content:        "service unavailable: backend offline",
+		Timestamp:      time.Now().Unix(),
+	}
+	data, _ := proto.Marshal(errResp)
+	request.GetConnection().SendMsg(respMsgID, data)
 }
 
 func (r *ForwardRouter) resolveRouteKey(conn ziface.IConnection, route *BackendRouteInfo) string {

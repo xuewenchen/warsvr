@@ -19,7 +19,9 @@ func (r *ChatRespRouter) Handle(request ziface.IRequest) {
 		fmt.Println("ChatResp parse error:", err)
 		return
 	}
-	if msg.TargetPlayerId != 0 {
+	if msg.SenderPlayerId == -1 {
+		fmt.Printf("[Error] %s\n", msg.Content)
+	} else if msg.TargetPlayerId != 0 {
 		fmt.Printf("[Private] %d -> %d: %s\n", msg.SenderPlayerId, msg.TargetPlayerId, msg.Content)
 	} else {
 		fmt.Printf("[Global] %d: %s\n", msg.SenderPlayerId, msg.Content)
