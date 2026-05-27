@@ -30,7 +30,9 @@
       "Bash(protoc --proto_path=protocol/proto --go_out=protocol/pb --go_opt=paths=source_relative protocol/proto/cardwar.proto)",
       "Bash(go get *)",
       "Bash(sed -i 's/func \\(r \\\\*Registry\\) Dial\\(service string, routers \\\\[\\\\]BackendRouterConfig, routeFn RouteFunc\\) {/func \\(r *Registry\\) Dial\\(service string, routers []BackendRouterConfig, routeFn RouteFunc, registerMsgID uint32\\) {/' pkg/registry.go)",
-      "Bash(sed -i 's/pool := Dial\\(service, routers, routeFn\\)/pool := Dial\\(service, routers, routeFn, registerMsgID\\)/' pkg/registry.go)"
+      "Bash(sed -i 's/pool := Dial\\(service, routers, routeFn\\)/pool := Dial\\(service, routers, routeFn, registerMsgID\\)/' pkg/registry.go)",
+      "Bash(gofmt -l .)",
+      "Bash(gofmt -w apps/gateway/internal/router/ping_router.go conf/config.go pkg/const.go)"
     ]
   }
 }

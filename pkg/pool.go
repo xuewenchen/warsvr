@@ -75,7 +75,7 @@ func NewPool(conns []ziface.IConnection, servers []conf.ServerNode, routers []Ba
 			addr:    servers[i].Listen,
 			routers: routers,
 			healthy: conn != nil,
-			backoff: time.Second,
+			backoff: reconnectInitBackoff,
 		}
 	}
 	return &Pool{conns: entries, routeFn: routeFn}
@@ -176,7 +176,11 @@ func (p *Pool) OnDisconnect(idx int) {
 	go p.reconnectLoop(idx)
 }
 
-const reconnectTimeout = 15 * time.Second
+const (
+	reconnectTimeout     = 5 * time.Second
+	reconnectMaxBackoff  = 5 * time.Second
+	reconnectInitBackoff = 200 * time.Millisecond
+)
 
 func (p *Pool) reconnectLoop(idx int) {
 	p.mu.RLock()
@@ -224,7 +228,7 @@ func (p *Pool) reconnectLoop(idx int) {
 				e.mu.Lock()
 				e.conn = conn
 				e.healthy = true
-				e.backoff = time.Second
+				e.backoff = reconnectInitBackoff
 				e.reconnecting = false
 				e.mu.Unlock()
 				return
@@ -234,7 +238,7 @@ func (p *Pool) reconnectLoop(idx int) {
 		}
 
 		e.mu.Lock()
-		if e.backoff < 30*time.Second {
+		if e.backoff < reconnectMaxBackoff {
 			e.backoff *= 2
 		}
 		e.mu.Unlock()

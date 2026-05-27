@@ -10,7 +10,7 @@ import (
 )
 
 type GatewayConfig struct {
-	JWTSecret string                `yaml:"jwt_secret"`
+	JWTSecret string                  `yaml:"jwt_secret"`
 	Routes    map[string]BackendRoute `yaml:"routes"`
 }
 

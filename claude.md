@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Rules
+
+- **gofmt**: After writing or editing any `.go` file, run `gofmt -w <file>` before declaring the work complete.
+
 ## Architecture
 
 This is a game/chat server (`cardwar`) built on **Zinx v1.2.8** — a TCP framework that provides message routing based on message IDs. The module path is `cardwar`.
