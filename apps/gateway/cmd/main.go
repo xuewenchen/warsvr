@@ -121,7 +121,7 @@ func registerResponseRouter(gw *router.GatewayRef) {
 		for msgID := uint32(1); msgID <= pkg.MaxMsgID; msgID++ {
 			routers = append(routers, pkg.BackendRouterConfig{MsgID: msgID, Router: rspRouter})
 		}
-		gw.Dial(backend, routers, pkg.HashRoute)
+		gw.Dial(backend, routers, pkg.HashRoute, protocol.MsgIdGatewayRegister)
 	}
 }
 

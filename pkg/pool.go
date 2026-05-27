@@ -47,8 +47,9 @@ func RandomRoute(key string, healthy []ziface.IConnection) ziface.IConnection {
 
 // connEntry holds a single backend connection with reconnect state.
 type connEntry struct {
-	addr    string
-	routers []BackendRouterConfig
+	addr          string
+	routers       []BackendRouterConfig
+	registerMsgID uint32
 
 	mu           sync.Mutex
 	conn         ziface.IConnection
@@ -83,7 +84,7 @@ func NewPool(conns []ziface.IConnection, servers []conf.ServerNode, routers []Ba
 // Dial connects to all configured instances of a backend service and returns a Pool.
 // The service name matches the key in config.yml services section.
 // Routers are registered on every connection. routeFn determines how Route() picks a connection.
-func Dial(service string, routers []BackendRouterConfig, routeFn RouteFunc) *Pool {
+func Dial(service string, routers []BackendRouterConfig, routeFn RouteFunc, registerMsgID uint32) *Pool {
 	servers := conf.GlobalConfig.Services[service]
 	if len(servers) == 0 {
 		panic("no " + service + " configured")
@@ -103,6 +104,9 @@ func Dial(service string, routers []BackendRouterConfig, routeFn RouteFunc) *Poo
 		client := znet.NewClient(host, port)
 
 		client.SetOnConnStart(func(conn ziface.IConnection) {
+			if registerMsgID != 0 {
+				conn.SendMsg(registerMsgID, []byte{})
+			}
 			pool.conns[idx].mu.Lock()
 			pool.conns[idx].conn = conn
 			pool.conns[idx].healthy = true
@@ -120,10 +124,11 @@ func Dial(service string, routers []BackendRouterConfig, routeFn RouteFunc) *Poo
 		}
 
 		pool.conns[idx] = &connEntry{
-			addr:    srv.Listen,
-			routers: routers,
-			healthy: false,
-			backoff: time.Second,
+			addr:          srv.Listen,
+			routers:       routers,
+			registerMsgID: registerMsgID,
+			healthy:       false,
+			backoff:       time.Second,
 		}
 
 		wg.Add(1)
@@ -191,6 +196,9 @@ func (p *Pool) reconnectLoop(idx int) {
 		connCh := make(chan ziface.IConnection, 1)
 
 		client.SetOnConnStart(func(conn ziface.IConnection) {
+			if e.registerMsgID != 0 {
+				conn.SendMsg(e.registerMsgID, []byte{})
+			}
 			zlog.Ins().InfoF("Pool: reconnected to %s", e.addr)
 			connCh <- conn
 		})

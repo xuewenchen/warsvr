@@ -19,8 +19,8 @@ func NewRegistry() *Registry {
 }
 
 // Dial connects to all configured instances of a backend service and stores the pool.
-func (r *Registry) Dial(service string, routers []BackendRouterConfig, routeFn RouteFunc) {
-	pool := Dial(service, routers, routeFn)
+func (r *Registry) Dial(service string, routers []BackendRouterConfig, routeFn RouteFunc, registerMsgID uint32) {
+	pool := Dial(service, routers, routeFn, registerMsgID)
 	r.mu.Lock()
 	r.backends[service] = pool
 	r.mu.Unlock()

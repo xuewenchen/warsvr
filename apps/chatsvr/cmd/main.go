@@ -3,6 +3,7 @@ package main
 import (
 	"cardwar/apps/chatsvr/internal/router"
 	"cardwar/conf"
+	"cardwar/pkg"
 	"cardwar/protocol"
 	"flag"
 
@@ -31,7 +32,8 @@ func main() {
 	s := znet.NewUserConfServer(cfg)
 
 	s.AddRouter(protocol.MsgIdPing, &router.PingRouter{})
-	s.AddRouter(protocol.MsgIdChatReq, &router.ChatRouter{Server: s})
+	s.AddRouter(protocol.MsgIdGatewayRegister, &router.GatewayRegisterRouter{}) // 设置gateway注册类型
+	s.AddRouter(protocol.MsgIdChatReq, &router.ChatRouter{BC: pkg.NewBroadcaster(s)})
 
 	s.Serve()
 }
