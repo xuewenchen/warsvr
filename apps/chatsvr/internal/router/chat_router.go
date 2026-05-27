@@ -30,7 +30,7 @@ func (r *ChatRouter) Handle(request ziface.IRequest) {
 
 	senderPID := env.ConnTags["player_id"]
 
-	push := &pb.ChatPush{
+	push := &pb.ChatResp{
 		SenderPlayerId: senderPID,
 		Content:        chatReq.Content,
 		Timestamp:      time.Now().Unix(),
@@ -56,5 +56,5 @@ func (r *ChatRouter) Handle(request ziface.IRequest) {
 	}
 
 	pushEnvData, _ := proto.Marshal(pushEnv)
-	request.GetConnection().SendMsg(protocol.MsgIdChatPush, pushEnvData)
+	request.GetConnection().SendMsg(protocol.MsgIdChatResp, pushEnvData)
 }

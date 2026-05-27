@@ -177,7 +177,7 @@ func (x *ChatReq) GetTargetPlayerId() string {
 	return ""
 }
 
-type ChatPush struct {
+type ChatResp struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	SenderPlayerId string                 `protobuf:"bytes,1,opt,name=sender_player_id,json=senderPlayerId,proto3" json:"sender_player_id,omitempty"`
 	Content        string                 `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
@@ -187,20 +187,20 @@ type ChatPush struct {
 	sizeCache      protoimpl.SizeCache
 }
 
-func (x *ChatPush) Reset() {
-	*x = ChatPush{}
+func (x *ChatResp) Reset() {
+	*x = ChatResp{}
 	mi := &file_cardwar_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ChatPush) String() string {
+func (x *ChatResp) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ChatPush) ProtoMessage() {}
+func (*ChatResp) ProtoMessage() {}
 
-func (x *ChatPush) ProtoReflect() protoreflect.Message {
+func (x *ChatResp) ProtoReflect() protoreflect.Message {
 	mi := &file_cardwar_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -212,33 +212,33 @@ func (x *ChatPush) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ChatPush.ProtoReflect.Descriptor instead.
-func (*ChatPush) Descriptor() ([]byte, []int) {
+// Deprecated: Use ChatResp.ProtoReflect.Descriptor instead.
+func (*ChatResp) Descriptor() ([]byte, []int) {
 	return file_cardwar_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *ChatPush) GetSenderPlayerId() string {
+func (x *ChatResp) GetSenderPlayerId() string {
 	if x != nil {
 		return x.SenderPlayerId
 	}
 	return ""
 }
 
-func (x *ChatPush) GetContent() string {
+func (x *ChatResp) GetContent() string {
 	if x != nil {
 		return x.Content
 	}
 	return ""
 }
 
-func (x *ChatPush) GetTimestamp() int64 {
+func (x *ChatResp) GetTimestamp() int64 {
 	if x != nil {
 		return x.Timestamp
 	}
 	return 0
 }
 
-func (x *ChatPush) GetTargetPlayerId() string {
+func (x *ChatResp) GetTargetPlayerId() string {
 	if x != nil {
 		return x.TargetPlayerId
 	}
@@ -319,7 +319,7 @@ const file_cardwar_proto_rawDesc = "" +
 	"\aChatReq\x12\x18\n" +
 	"\acontent\x18\x01 \x01(\tR\acontent\x12(\n" +
 	"\x10target_player_id\x18\x02 \x01(\tR\x0etargetPlayerId\"\x96\x01\n" +
-	"\bChatPush\x12(\n" +
+	"\bChatResp\x12(\n" +
 	"\x10sender_player_id\x18\x01 \x01(\tR\x0esenderPlayerId\x12\x18\n" +
 	"\acontent\x18\x02 \x01(\tR\acontent\x12\x1c\n" +
 	"\ttimestamp\x18\x03 \x01(\x03R\ttimestamp\x12(\n" +
@@ -349,7 +349,7 @@ var file_cardwar_proto_goTypes = []any{
 	(*LoginReq)(nil), // 0: pb.LoginReq
 	(*LoginRsp)(nil), // 1: pb.LoginRsp
 	(*ChatReq)(nil),  // 2: pb.ChatReq
-	(*ChatPush)(nil), // 3: pb.ChatPush
+	(*ChatResp)(nil), // 3: pb.ChatResp
 	(*Envelope)(nil), // 4: pb.Envelope
 	nil,              // 5: pb.Envelope.ConnTagsEntry
 }

@@ -25,7 +25,7 @@ func chatLoop(conn ziface.IConnection) {
 			Content: fmt.Sprintf("Hello #%d from %s", i, playerID),
 		}
 		data, _ := proto.Marshal(msg)
-		if err := conn.SendMsg(protocol.MsgIdChat, data); err != nil {
+		if err := conn.SendMsg(protocol.MsgIdChatReq, data); err != nil {
 			fmt.Println("Send chat error:", err)
 			return
 		}
@@ -70,7 +70,7 @@ func main() {
 	client := znet.NewWsClient("127.0.0.1", 9000, znet.WithUrl(wsURL))
 	client.SetOnConnStart(onClientStart)
 	client.AddRouter(protocol.MsgIdPong, &router.PongRouter{})
-	client.AddRouter(protocol.MsgIdChatPush, &router.ChatPushRouter{})
+	client.AddRouter(protocol.MsgIdChatResp, &router.ChatRespRouter{})
 
 	client.Start()
 	select {}

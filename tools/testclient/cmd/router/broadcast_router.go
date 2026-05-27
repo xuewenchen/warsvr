@@ -9,14 +9,14 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type ChatPushRouter struct {
+type ChatRespRouter struct {
 	znet.BaseRouter
 }
 
-func (r *ChatPushRouter) Handle(request ziface.IRequest) {
-	var msg pb.ChatPush
+func (r *ChatRespRouter) Handle(request ziface.IRequest) {
+	var msg pb.ChatResp
 	if err := proto.Unmarshal(request.GetData(), &msg); err != nil {
-		fmt.Println("ChatPush parse error:", err)
+		fmt.Println("ChatResp parse error:", err)
 		return
 	}
 	if msg.TargetPlayerId != "" {

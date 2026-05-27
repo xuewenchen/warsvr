@@ -20,7 +20,7 @@ message ChatReq {
   string target_player_id = 2;  // empty = global, non-empty = private target
 }
 
-message ChatPush {
+message ChatResp {
   string sender_player_id = 1;
   string content = 2;
   int64 timestamp = 3;

@@ -7,8 +7,6 @@ const (
 	MsgIdPong = 2
 
 	// ===== chat
-	MsgIdChat = 4
-
-	// ===== chat push from backend to clients
-	MsgIdChatPush = 6
+	MsgIdChatReq  = 5
+	MsgIdChatResp = 6
 )

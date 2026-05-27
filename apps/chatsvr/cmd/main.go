@@ -2,8 +2,8 @@ package main
 
 import (
 	"cardwar/apps/chatsvr/internal/router"
-	"cardwar/protocol"
 	"cardwar/conf"
+	"cardwar/protocol"
 	"flag"
 
 	"github.com/aceld/zinx/zconf"
@@ -31,7 +31,7 @@ func main() {
 	s := znet.NewUserConfServer(cfg)
 
 	s.AddRouter(protocol.MsgIdPing, &router.PingRouter{})
-	s.AddRouter(protocol.MsgIdChat, &router.ChatRouter{})
+	s.AddRouter(protocol.MsgIdChatReq, &router.ChatRouter{})
 
 	s.Serve()
 }
