@@ -1,6 +1,8 @@
 package main
 
 import (
+	"cardwar/conf"
+	"cardwar/pkg/auth"
 	"cardwar/protocol"
 	"cardwar/protocol/pb"
 	"cardwar/tools/testclient/cmd/router"
@@ -15,13 +17,6 @@ import (
 )
 
 var playerID string
-
-func login(conn ziface.IConnection) {
-	msg := &pb.LoginReq{PlayerId: playerID}
-	data, _ := proto.Marshal(msg)
-	conn.SendMsg(protocol.MsgIdLogin, data)
-	fmt.Println("Sent login:", playerID)
-}
 
 func chatLoop(conn ziface.IConnection) {
 	time.Sleep(2 * time.Second)
@@ -41,7 +36,6 @@ func chatLoop(conn ziface.IConnection) {
 
 func onClientStart(conn ziface.IConnection) {
 	fmt.Println("Connected to gateway via WebSocket")
-	login(conn)
 	go chatLoop(conn)
 }
 
@@ -52,7 +46,28 @@ func main() {
 		playerID = "player1"
 	}
 
-	wsURL := &url.URL{Scheme: "ws", Host: "127.0.0.1:9000", Path: "/ws"}
+	if err := conf.Load("config.yml"); err != nil {
+		fmt.Println("Failed to load config:", err)
+		os.Exit(1)
+	}
+
+	if conf.GlobalConfig.Gateway.JWTSecret == "" {
+		fmt.Println("JWT secret not configured")
+		os.Exit(1)
+	}
+
+	token, err := auth.GenerateJWT(playerID, conf.GlobalConfig.Gateway.JWTSecret)
+	if err != nil {
+		fmt.Println("Failed to generate JWT:", err)
+		os.Exit(1)
+	}
+
+	wsURL := &url.URL{
+		Scheme:   "ws",
+		Host:     "127.0.0.1:9000",
+		Path:     "/ws",
+		RawQuery: "token=" + url.QueryEscape(token),
+	}
 	client := znet.NewWsClient("127.0.0.1", 9000, znet.WithUrl(wsURL))
 	client.SetOnConnStart(onClientStart)
 	client.AddRouter(protocol.MsgIdPong, &router.PongRouter{})

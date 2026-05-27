@@ -28,11 +28,6 @@ func (r *ChatRouter) Handle(request ziface.IRequest) {
 		return
 	}
 
-	if _, ok := loggedInPlayers.Load(chatReq.PlayerId); !ok {
-		zlog.Ins().InfoF("ChatRouter: player not logged in: %s", chatReq.PlayerId)
-		return
-	}
-
 	bcMsg := &pb.BroadcastPush{
 		PlayerId:  chatReq.PlayerId,
 		Content:   chatReq.Content,

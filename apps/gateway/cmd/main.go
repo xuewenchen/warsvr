@@ -4,8 +4,10 @@ import (
 	"cardwar/apps/gateway/internal/router"
 	"cardwar/conf"
 	"cardwar/pkg"
+	"cardwar/pkg/auth"
 	"cardwar/protocol"
 	"flag"
+	"net/http"
 	"sync"
 
 	"github.com/aceld/zinx/zconf"
@@ -56,6 +58,7 @@ func main() {
 
 func initWebSocket(gw *router.GatewayRef, gwID string) {
 	gwCfg := conf.LookupServer(conf.GlobalConfig.Services["gateway"], gwID, "Gateway")
+	jwtSecret := conf.GlobalConfig.Gateway.JWTSecret
 
 	_, wsPort := conf.ParseHostPort(gwCfg.WSListen)
 	tcpHost, tcpPort := conf.ParseHostPort(gwCfg.TCPListen)
@@ -71,9 +74,39 @@ func initWebSocket(gw *router.GatewayRef, gwID string) {
 	wsServer := znet.NewUserConfServer(serverCfg)
 	gw.Server = wsServer
 
-	wsServer.SetOnConnStart(func(conn ziface.IConnection) {
-		zlog.Ins().InfoF("Client connected: connID=%d, addr=%s", conn.GetConnID(), conn.RemoteAddr())
+	var pendingAuths sync.Map // remoteAddr -> playerId (passes JWT result from websocketAuth to OnConnStart)
+
+	// 鉴权
+	wsServer.SetWebsocketAuth(func(r *http.Request) error {
+		token := r.URL.Query().Get("token")
+		if token == "" {
+			return pkg.ErrUnauthorized("missing token")
+		}
+		playerID, err := auth.ValidateJWT(token, jwtSecret)
+		if err != nil {
+			zlog.Ins().ErrorF("Gateway: JWT validation failed for %s: %v", r.RemoteAddr, err)
+			return pkg.ErrUnauthorized("invalid token")
+		}
+		pendingAuths.Store(r.RemoteAddr, playerID)
+		zlog.Ins().InfoF("Gateway: JWT validated for player %s from %s", playerID, r.RemoteAddr)
+		return nil
 	})
+
+	// 建立链接
+	wsServer.SetOnConnStart(func(conn ziface.IConnection) {
+		addr := conn.RemoteAddr().String()
+		val, ok := pendingAuths.LoadAndDelete(addr)
+		if !ok {
+			zlog.Ins().ErrorF("Gateway: unauthenticated connection from %s, closing", addr)
+			conn.Stop()
+			return
+		}
+		playerID := val.(string)
+		conn.SetProperty("playerId", playerID)
+		gw.PlayerConns.Store(playerID, conn.GetConnID())
+		zlog.Ins().InfoF("Client connected: connID=%d, player=%s, addr=%s", conn.GetConnID(), playerID, addr)
+	})
+
 	wsServer.SetOnConnStop(func(conn ziface.IConnection) {
 		if pid, err := conn.GetProperty("playerId"); err == nil {
 			gw.PlayerConns.Delete(pid)
@@ -81,22 +114,13 @@ func initWebSocket(gw *router.GatewayRef, gwID string) {
 		zlog.Ins().InfoF("Client disconnected: connID=%d", conn.GetConnID())
 	})
 
-	// Ping handled locally
-	wsServer.AddRouter(protocol.MsgIdPing, &pingRouter{})
+	wsServer.AddRouter(protocol.MsgIdPing, &router.PingRouter{})
 
-	// Pre-register ForwardRouter for msgIDs 1..maxMsgID so new msgIDs
-	// added to config don't require Gateway restart.
 	fwdRouter := &router.ForwardRouter{GW: gw}
 	for msgID := uint32(1); msgID <= maxMsgID; msgID++ {
+		if msgID == protocol.MsgIdPing {
+			continue // Ping is handled locally
+		}
 		wsServer.AddRouter(msgID, fwdRouter)
 	}
-}
-
-type pingRouter struct {
-	znet.BaseRouter
-}
-
-func (r *pingRouter) Handle(request ziface.IRequest) {
-	zlog.Ins().DebugF("Call PingRouter Handle")
-	request.GetConnection().SendMsg(protocol.MsgIdPong, []byte("pong-server"))
 }

@@ -31,7 +31,6 @@ func main() {
 	s := znet.NewUserConfServer(cfg)
 
 	s.AddRouter(protocol.MsgIdPing, &router.PingRouter{})
-	s.AddRouter(protocol.MsgIdLogin, &router.LoginRouter{})
 	s.AddRouter(protocol.MsgIdChat, &router.ChatRouter{})
 
 	s.Serve()

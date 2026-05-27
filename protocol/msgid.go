@@ -2,10 +2,13 @@ package protocol
 
 // Message IDs for Zinx routing.
 const (
-	MsgIdPing      = 1
-	MsgIdPong      = 2
-	MsgIdLogin     = 3
-	MsgIdChat      = 4
-	MsgIdLoginRsp  = 5
+	// ping pong
+	MsgIdPing = 1
+	MsgIdPong = 2
+
+	// ===== chat
+	MsgIdChat = 4
+
+	// ===== broadcast from backend to clients
 	MsgIdBroadcast = 6
 )
