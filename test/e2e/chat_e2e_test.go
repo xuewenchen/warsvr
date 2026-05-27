@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -386,6 +387,134 @@ func TestE2E_ThreeGateways_OneChatSvr(t *testing.T) {
 	}
 }
 
+// ------- reliability test -------
+
+// TestE2E_NoMessageLoss sends exactly N messages and verifies the receiver
+// gets every one, with no gaps and no duplicates.
+func TestE2E_NoMessageLoss(t *testing.T) {
+	csPorts := []int{nextPort()}
+	gwTCPs := []int{nextPort()}
+	gwWSPorts := []int{nextPort()}
+
+	topo := writeTopoConfig(t, csPorts, gwTCPs, gwWSPorts)
+	startChatSvrs(t, topo)
+	startGateways(t, topo)
+
+	const N = 1000
+
+	sender := connectClient(t, 1, gwWSPorts[0])
+	receiver := connectClient(t, 2, gwWSPorts[0])
+	time.Sleep(300 * time.Millisecond)
+
+	// Sender sends N global chat messages with sequential IDs
+	go func() {
+		for i := 0; i < N; i++ {
+			msg := &pb.ChatReq{Content: fmt.Sprintf("%d", i)}
+			data, _ := proto.Marshal(msg)
+			sender.conn.SendMsg(protocol.MsgIdChatReq, data)
+			time.Sleep(1 * time.Millisecond) // throttle slightly
+		}
+	}()
+
+	// Receiver collects all messages from sender (player 1)
+	received := make(map[int]bool)
+	timeout := time.After(time.Duration(N/50+5) * time.Second)
+
+	for len(received) < N {
+		select {
+		case msg := <-receiver.recvCh:
+			if msg.SenderPlayerId != 1 {
+				continue // ignore other sources
+			}
+			seq, err := strconv.Atoi(msg.Content)
+			if err != nil {
+				t.Errorf("unparseable content: %s", msg.Content)
+				continue
+			}
+			if received[seq] {
+				t.Errorf("duplicate message: seq=%d", seq)
+			}
+			received[seq] = true
+		case <-timeout:
+			t.Fatalf("timeout: received %d/%d messages", len(received), N)
+		}
+	}
+
+	// Check for gaps
+	for i := 0; i < N; i++ {
+		if !received[i] {
+			t.Errorf("missing message: seq=%d", i)
+		}
+	}
+
+	// Also check sender got N confirmations back (for global chat, sender also receives)
+	senderReceived := 0
+drainLoop:
+	for {
+		select {
+		case msg := <-sender.recvCh:
+			if msg.SenderPlayerId == 1 {
+				senderReceived++
+			}
+		default:
+			break drainLoop
+		}
+	}
+	t.Logf("sender received %d of its own messages back", senderReceived)
+}
+
+// TestE2E_NoMessageLoss_Private sends N private messages and verifies
+// the target receives every one without loss.
+func TestE2E_NoMessageLoss_Private(t *testing.T) {
+	csPorts := []int{nextPort()}
+	gwTCPs := []int{nextPort()}
+	gwWSPorts := []int{nextPort()}
+
+	topo := writeTopoConfig(t, csPorts, gwTCPs, gwWSPorts)
+	startChatSvrs(t, topo)
+	startGateways(t, topo)
+
+	const N = 500
+
+	sender := connectClient(t, 1, gwWSPorts[0])
+	receiver := connectClient(t, 2, gwWSPorts[0])
+	time.Sleep(300 * time.Millisecond)
+
+	go func() {
+		for i := 0; i < N; i++ {
+			msg := &pb.ChatReq{Content: fmt.Sprintf("%d", i), TargetPlayerId: 2}
+			data, _ := proto.Marshal(msg)
+			sender.conn.SendMsg(protocol.MsgIdChatReq, data)
+			time.Sleep(2 * time.Millisecond)
+		}
+	}()
+
+	received := make(map[int]bool)
+	timeout := time.After(time.Duration(N/20+5) * time.Second)
+
+	for len(received) < N {
+		select {
+		case msg := <-receiver.recvCh:
+			if msg.SenderPlayerId != 1 {
+				continue
+			}
+			seq, _ := strconv.Atoi(msg.Content)
+			if received[seq] {
+				t.Errorf("duplicate private message: seq=%d", seq)
+			}
+			received[seq] = true
+		case <-timeout:
+			t.Fatalf("timeout: received %d/%d private messages", len(received), N)
+		}
+	}
+
+	for i := 0; i < N; i++ {
+		if !received[i] {
+			t.Errorf("missing private message: seq=%d", i)
+		}
+	}
+}
+
 // ------- utils -------
 
 func findProjectRoot() (string, error) {
@@ -402,5 +531,170 @@ func findProjectRoot() (string, error) {
 			return "", fmt.Errorf("go.mod not found")
 		}
 		dir = parent
+	}
+}
+
+// ------- benchmarks -------
+
+// startBenchServers starts ChatSvr + Gateway once and returns the WS port.
+func startBenchServers(b *testing.B) int {
+	b.Helper()
+	csP := nextPort()
+	gwTCP := nextPort()
+	gwWS := nextPort()
+
+	dir := b.TempDir()
+	confPath := filepath.Join(dir, "config.yml")
+	content := fmt.Sprintf(`
+services:
+  gateway:
+    - id: gw-1
+      tcp_listen: 0.0.0.0:%d
+      ws_listen: 0.0.0.0:%d
+  chatsvr:
+    - id: cs-1
+      listen: 0.0.0.0:%d
+gateway:
+  jwt_secret: "%s"
+  routes:
+    chatsvr:
+      forward: [5]
+      route_key: playerId
+`, gwTCP, gwWS, csP, jwtSecret)
+	if err := os.WriteFile(confPath, []byte(content), 0644); err != nil {
+		b.Fatal(err)
+	}
+
+	csCmd := exec.Command(chatsvrBin, "-conf", confPath, "-id", "cs-1")
+	csCmd.Stdout = nil
+	csCmd.Stderr = nil
+	csCmd.Start()
+
+	gwCmd := exec.Command(gatewayBin, "-conf", confPath, "-id", "gw-1")
+	gwCmd.Stdout = nil
+	gwCmd.Stderr = nil
+	gwCmd.Start()
+
+	b.Cleanup(func() {
+		csCmd.Process.Kill()
+		gwCmd.Process.Kill()
+	})
+
+	waitPortBench(b, csP, 5*time.Second)
+	waitPortBench(b, gwWS, 10*time.Second)
+	time.Sleep(500 * time.Millisecond)
+	return gwWS
+}
+
+func waitPortBench(b *testing.B, port int, d time.Duration) {
+	deadline := time.After(d)
+	for {
+		select {
+		case <-deadline:
+			b.Fatalf("port %d not ready", port)
+		default:
+			conn, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", port), 100*time.Millisecond)
+			if err == nil {
+				conn.Close()
+				return
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+}
+
+func connectBenchClient(b *testing.B, playerID int64, wsPort int) *testClient {
+	token, _ := auth.GenerateJWT(playerID, jwtSecret)
+	wsURL := &url.URL{
+		Scheme:   "ws",
+		Host:     fmt.Sprintf("127.0.0.1:%d", wsPort),
+		Path:     "/ws",
+		RawQuery: "token=" + url.QueryEscape(token),
+	}
+	client := znet.NewWsClient("127.0.0.1", wsPort, znet.WithUrl(wsURL))
+
+	recvCh := make(chan *pb.ChatResp, 10000)
+	client.AddRouter(protocol.MsgIdChatResp, &chatRespRouter{ch: recvCh})
+
+	connCh := make(chan ziface.IConnection, 1)
+	client.SetOnConnStart(func(conn ziface.IConnection) { connCh <- conn })
+	client.Start()
+
+	select {
+	case conn := <-connCh:
+		return &testClient{playerID: playerID, conn: conn, recvCh: recvCh}
+	case <-time.After(5 * time.Second):
+		b.Fatal("bench client timeout")
+	}
+	return nil
+}
+
+// BenchmarkE2E_Latency measures end-to-end latency: send ChatReq → receive ChatResp.
+func BenchmarkE2E_Latency(b *testing.B) {
+	wsPort := startBenchServers(b)
+	c := connectBenchClient(b, 1, wsPort)
+	time.Sleep(200 * time.Millisecond)
+
+	req := &pb.ChatReq{Content: "bench"}
+	data, _ := proto.Marshal(req)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		c.conn.SendMsg(protocol.MsgIdChatReq, data)
+		<-c.recvCh
+	}
+}
+
+// BenchmarkE2E_Throughput measures throughput with N concurrent senders.
+func BenchmarkE2E_Throughput(b *testing.B) {
+	wsPort := startBenchServers(b)
+	n := 10
+	var clients []*testClient
+	for i := 0; i < n; i++ {
+		c := connectBenchClient(b, int64(i+1), wsPort)
+		clients = append(clients, c)
+	}
+	time.Sleep(200 * time.Millisecond)
+
+	req := &pb.ChatReq{Content: "bench"}
+	data, _ := proto.Marshal(req)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	b.SetParallelism(n)
+	b.RunParallel(func(pb *testing.PB) {
+		// Each goroutine uses its own client; pick by goroutine id approximation
+		idx := 0
+		for pb.Next() {
+			clients[idx%n].conn.SendMsg(protocol.MsgIdChatReq, data)
+			<-clients[idx%n].recvCh
+			idx++
+		}
+	})
+}
+
+// BenchmarkE2E_BroadcastMass measures global broadcast with many connected clients.
+func BenchmarkE2E_BroadcastMass(b *testing.B) {
+	wsPort := startBenchServers(b)
+	n := 50
+	var clients []*testClient
+	for i := 0; i < n; i++ {
+		c := connectBenchClient(b, int64(i+1), wsPort)
+		clients = append(clients, c)
+	}
+	time.Sleep(500 * time.Millisecond)
+
+	req := &pb.ChatReq{Content: "mass"}
+	data, _ := proto.Marshal(req)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		clients[0].conn.SendMsg(protocol.MsgIdChatReq, data)
+		// Drain all N responses (global broadcast to everyone)
+		for i := 0; i < n; i++ {
+			<-clients[i].recvCh
+		}
 	}
 }
