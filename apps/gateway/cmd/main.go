@@ -14,6 +14,8 @@ import (
 	"github.com/aceld/zinx/znet"
 )
 
+const maxMsgID = 1000
+
 func main() {
 	configPath := flag.String("conf", "config.yml", "path to config file")
 	gwID := flag.String("id", "", "Gateway ID (matches config services.gateway[].id)")
@@ -26,10 +28,10 @@ func main() {
 	routeIndex := router.BuildRouteIndex(conf.GlobalConfig.Gateway)
 
 	gw := &router.GatewayRef{
-		Registry:      pkg.NewRegistry(),
-		PlayerConns:   &sync.Map{},
-		ForwardRoutes: routeIndex,
+		Registry:    pkg.NewRegistry(),
+		PlayerConns: &sync.Map{},
 	}
+	gw.SetRoutes(routeIndex)
 
 	rspRouter := &router.ResponseRouter{GW: gw}
 	for backend, rc := range conf.GlobalConfig.Gateway.Routes {
@@ -38,6 +40,14 @@ func main() {
 			routers[i] = pkg.BackendRouterConfig{MsgID: msgID, Router: rspRouter}
 		}
 		gw.Dial(backend, routers, pkg.HashRoute)
+	}
+
+	if _, err := conf.Watch(*configPath, func(cfg *conf.Config) {
+		newIndex := router.BuildRouteIndex(cfg.Gateway)
+		gw.SetRoutes(newIndex)
+		zlog.Ins().InfoF("Gateway: routes hot-reloaded (%d msgIDs)", len(newIndex))
+	}); err != nil {
+		zlog.Ins().ErrorF("Gateway: config watch failed: %v", err)
 	}
 
 	initWebSocket(gw, *gwID)
@@ -74,12 +84,11 @@ func initWebSocket(gw *router.GatewayRef, gwID string) {
 	// Ping handled locally
 	wsServer.AddRouter(protocol.MsgIdPing, &pingRouter{})
 
-	// Register ForwardRouter for all forward msgIDs from config
+	// Pre-register ForwardRouter for msgIDs 1..maxMsgID so new msgIDs
+	// added to config don't require Gateway restart.
 	fwdRouter := &router.ForwardRouter{GW: gw}
-	for _, rc := range conf.GlobalConfig.Gateway.Routes {
-		for _, msgID := range rc.Forward {
-			wsServer.AddRouter(msgID, fwdRouter)
-		}
+	for msgID := uint32(1); msgID <= maxMsgID; msgID++ {
+		wsServer.AddRouter(msgID, fwdRouter)
 	}
 }
 

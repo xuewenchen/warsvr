@@ -18,13 +18,24 @@ type BackendRouteInfo struct {
 type GatewayRef struct {
 	*pkg.Registry
 	Server        ziface.IServer
-	PlayerConns   *sync.Map                 // playerID → connID (uint64)
-	ForwardRoutes map[uint32]*BackendRouteInfo
+	PlayerConns   *sync.Map // playerID → connID (uint64)
+
+	mu            sync.RWMutex
+	routes        map[uint32]*BackendRouteInfo
 }
 
 // RouteFor returns the backend route for a given message ID, or nil if not found.
 func (gw *GatewayRef) RouteFor(msgID uint32) *BackendRouteInfo {
-	return gw.ForwardRoutes[msgID]
+	gw.mu.RLock()
+	defer gw.mu.RUnlock()
+	return gw.routes[msgID]
+}
+
+// SetRoutes atomically replaces the route table (for hot-reload).
+func (gw *GatewayRef) SetRoutes(r map[uint32]*BackendRouteInfo) {
+	gw.mu.Lock()
+	gw.routes = r
+	gw.mu.Unlock()
 }
 
 // BuildRouteIndex builds the forward route lookup table from config.
