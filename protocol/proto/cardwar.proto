@@ -31,4 +31,5 @@ message BroadcastPush {
 message Envelope {
   uint64 conn_id = 1;
   bytes  data    = 2;
+  map<string, string> conn_tags = 3;
 }

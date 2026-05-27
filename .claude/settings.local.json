@@ -25,7 +25,9 @@
       "Bash(go mod *)",
       "Bash(rm -f common/pb/cardwar.pb.go proto/cardwar.pb.go)",
       "Bash(PATH=__TRACKED_VAR__/protoc/bin:__TRACKED_VAR__/go/bin:__TRACKED_VAR__ protoc --go_out=. --go_opt=paths=source_relative protocol/proto/cardwar.proto)",
-      "Bash(mv protocol/proto/cardwar.pb.go protocol/pb/cardwar.pb.go)"
+      "Bash(mv protocol/proto/cardwar.pb.go protocol/pb/cardwar.pb.go)",
+      "Bash(protoc --proto_path=. --go_out=. --go_opt=paths=source_relative protocol/proto/cardwar.proto)",
+      "Bash(protoc --proto_path=protocol/proto --go_out=protocol/pb --go_opt=paths=source_relative protocol/proto/cardwar.proto)"
     ]
   }
 }

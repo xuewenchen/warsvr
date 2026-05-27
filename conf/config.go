@@ -9,8 +9,19 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+type GatewayConfig struct {
+	Routes map[string]BackendRoute `yaml:"routes"`
+}
+
+type BackendRoute struct {
+	Forward  []uint32 `yaml:"forward"`
+	Response []uint32 `yaml:"response"`
+	RouteKey string   `yaml:"route_key"` // "connId" (default) or "playerId"
+}
+
 type Config struct {
 	Services ServicesConfig `yaml:"services"`
+	Gateway  GatewayConfig  `yaml:"gateway"`
 }
 
 // ServicesConfig maps backend names to their server node lists.

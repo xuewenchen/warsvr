@@ -41,7 +41,7 @@ func (r *LoginRouter) Handle(request ziface.IRequest) {
 	rsp := &pb.LoginRsp{PlayerId: loginReq.PlayerId, Success: true, Message: "login ok"}
 	rspData, _ := proto.Marshal(rsp)
 
-	rspEnv := &pb.Envelope{ConnId: env.ConnId, Data: rspData}
+	rspEnv := &pb.Envelope{ConnId: env.ConnId, Data: rspData, ConnTags: map[string]string{"playerId": loginReq.PlayerId}}
 	rspEnvData, _ := proto.Marshal(rspEnv)
 
 	request.GetConnection().SendMsg(protocol.MsgIdLoginRsp, rspEnvData)

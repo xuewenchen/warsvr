@@ -23,18 +23,22 @@ func main() {
 		panic(err)
 	}
 
+	routeIndex := router.BuildRouteIndex(conf.GlobalConfig.Gateway)
+
 	gw := &router.GatewayRef{
-		Registry:    pkg.NewRegistry(),
-		PlayerConns: &sync.Map{},
+		Registry:      pkg.NewRegistry(),
+		PlayerConns:   &sync.Map{},
+		ForwardRoutes: routeIndex,
 	}
 
-	gw.Dial("chatsvr",
-		[]pkg.BackendRouterConfig{
-			{MsgID: protocol.MsgIdLoginRsp, Router: &router.LoginRspRouter{GW: gw}},
-			{MsgID: protocol.MsgIdBroadcast, Router: &router.BroadcastRouter{GW: gw}},
-		},
-		pkg.HashRoute,
-	)
+	rspRouter := &router.ResponseRouter{GW: gw}
+	for backend, rc := range conf.GlobalConfig.Gateway.Routes {
+		routers := make([]pkg.BackendRouterConfig, len(rc.Response))
+		for i, msgID := range rc.Response {
+			routers[i] = pkg.BackendRouterConfig{MsgID: msgID, Router: rspRouter}
+		}
+		gw.Dial(backend, routers, pkg.HashRoute)
+	}
 
 	initWebSocket(gw, *gwID)
 	gw.Server.Serve()
@@ -67,7 +71,23 @@ func initWebSocket(gw *router.GatewayRef, gwID string) {
 		zlog.Ins().InfoF("Client disconnected: connID=%d", conn.GetConnID())
 	})
 
-	wsServer.AddRouter(protocol.MsgIdPing, &router.PingRouter{})
-	wsServer.AddRouter(protocol.MsgIdLogin, &router.LoginRouter{GW: gw})
-	wsServer.AddRouter(protocol.MsgIdChat, &router.ChatRouter{GW: gw})
+	// Ping handled locally
+	wsServer.AddRouter(protocol.MsgIdPing, &pingRouter{})
+
+	// Register ForwardRouter for all forward msgIDs from config
+	fwdRouter := &router.ForwardRouter{GW: gw}
+	for _, rc := range conf.GlobalConfig.Gateway.Routes {
+		for _, msgID := range rc.Forward {
+			wsServer.AddRouter(msgID, fwdRouter)
+		}
+	}
+}
+
+type pingRouter struct {
+	znet.BaseRouter
+}
+
+func (r *pingRouter) Handle(request ziface.IRequest) {
+	zlog.Ins().DebugF("Call PingRouter Handle")
+	request.GetConnection().SendMsg(protocol.MsgIdPong, []byte("pong-server"))
 }

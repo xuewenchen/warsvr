@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v7.35.0--rc1
-// source: cardwar.proto
+// source: protocol/proto/cardwar.proto
 
 package pb
 
@@ -30,7 +30,7 @@ type LoginReq struct {
 
 func (x *LoginReq) Reset() {
 	*x = LoginReq{}
-	mi := &file_cardwar_proto_msgTypes[0]
+	mi := &file_protocol_proto_cardwar_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -42,7 +42,7 @@ func (x *LoginReq) String() string {
 func (*LoginReq) ProtoMessage() {}
 
 func (x *LoginReq) ProtoReflect() protoreflect.Message {
-	mi := &file_cardwar_proto_msgTypes[0]
+	mi := &file_protocol_proto_cardwar_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -55,7 +55,7 @@ func (x *LoginReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LoginReq.ProtoReflect.Descriptor instead.
 func (*LoginReq) Descriptor() ([]byte, []int) {
-	return file_cardwar_proto_rawDescGZIP(), []int{0}
+	return file_protocol_proto_cardwar_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *LoginReq) GetPlayerId() string {
@@ -76,7 +76,7 @@ type LoginRsp struct {
 
 func (x *LoginRsp) Reset() {
 	*x = LoginRsp{}
-	mi := &file_cardwar_proto_msgTypes[1]
+	mi := &file_protocol_proto_cardwar_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -88,7 +88,7 @@ func (x *LoginRsp) String() string {
 func (*LoginRsp) ProtoMessage() {}
 
 func (x *LoginRsp) ProtoReflect() protoreflect.Message {
-	mi := &file_cardwar_proto_msgTypes[1]
+	mi := &file_protocol_proto_cardwar_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -101,7 +101,7 @@ func (x *LoginRsp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LoginRsp.ProtoReflect.Descriptor instead.
 func (*LoginRsp) Descriptor() ([]byte, []int) {
-	return file_cardwar_proto_rawDescGZIP(), []int{1}
+	return file_protocol_proto_cardwar_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *LoginRsp) GetPlayerId() string {
@@ -135,7 +135,7 @@ type ChatReq struct {
 
 func (x *ChatReq) Reset() {
 	*x = ChatReq{}
-	mi := &file_cardwar_proto_msgTypes[2]
+	mi := &file_protocol_proto_cardwar_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -147,7 +147,7 @@ func (x *ChatReq) String() string {
 func (*ChatReq) ProtoMessage() {}
 
 func (x *ChatReq) ProtoReflect() protoreflect.Message {
-	mi := &file_cardwar_proto_msgTypes[2]
+	mi := &file_protocol_proto_cardwar_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -160,7 +160,7 @@ func (x *ChatReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChatReq.ProtoReflect.Descriptor instead.
 func (*ChatReq) Descriptor() ([]byte, []int) {
-	return file_cardwar_proto_rawDescGZIP(), []int{2}
+	return file_protocol_proto_cardwar_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *ChatReq) GetPlayerId() string {
@@ -188,7 +188,7 @@ type BroadcastPush struct {
 
 func (x *BroadcastPush) Reset() {
 	*x = BroadcastPush{}
-	mi := &file_cardwar_proto_msgTypes[3]
+	mi := &file_protocol_proto_cardwar_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -200,7 +200,7 @@ func (x *BroadcastPush) String() string {
 func (*BroadcastPush) ProtoMessage() {}
 
 func (x *BroadcastPush) ProtoReflect() protoreflect.Message {
-	mi := &file_cardwar_proto_msgTypes[3]
+	mi := &file_protocol_proto_cardwar_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -213,7 +213,7 @@ func (x *BroadcastPush) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BroadcastPush.ProtoReflect.Descriptor instead.
 func (*BroadcastPush) Descriptor() ([]byte, []int) {
-	return file_cardwar_proto_rawDescGZIP(), []int{3}
+	return file_protocol_proto_cardwar_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *BroadcastPush) GetPlayerId() string {
@@ -248,7 +248,7 @@ type Envelope struct {
 
 func (x *Envelope) Reset() {
 	*x = Envelope{}
-	mi := &file_cardwar_proto_msgTypes[4]
+	mi := &file_protocol_proto_cardwar_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -260,7 +260,7 @@ func (x *Envelope) String() string {
 func (*Envelope) ProtoMessage() {}
 
 func (x *Envelope) ProtoReflect() protoreflect.Message {
-	mi := &file_cardwar_proto_msgTypes[4]
+	mi := &file_protocol_proto_cardwar_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -273,7 +273,7 @@ func (x *Envelope) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Envelope.ProtoReflect.Descriptor instead.
 func (*Envelope) Descriptor() ([]byte, []int) {
-	return file_cardwar_proto_rawDescGZIP(), []int{4}
+	return file_protocol_proto_cardwar_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *Envelope) GetConnId() uint64 {
@@ -297,11 +297,11 @@ func (x *Envelope) GetConnTags() map[string]string {
 	return nil
 }
 
-var File_cardwar_proto protoreflect.FileDescriptor
+var File_protocol_proto_cardwar_proto protoreflect.FileDescriptor
 
-const file_cardwar_proto_rawDesc = "" +
+const file_protocol_proto_cardwar_proto_rawDesc = "" +
 	"\n" +
-	"\rcardwar.proto\x12\x02pb\"'\n" +
+	"\x1cprotocol/proto/cardwar.proto\x12\x02pb\"'\n" +
 	"\bLoginReq\x12\x1b\n" +
 	"\tplayer_id\x18\x01 \x01(\tR\bplayerId\"[\n" +
 	"\bLoginRsp\x12\x1b\n" +
@@ -324,19 +324,19 @@ const file_cardwar_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x15Z\x13cardwar/protocol/pbb\x06proto3"
 
 var (
-	file_cardwar_proto_rawDescOnce sync.Once
-	file_cardwar_proto_rawDescData []byte
+	file_protocol_proto_cardwar_proto_rawDescOnce sync.Once
+	file_protocol_proto_cardwar_proto_rawDescData []byte
 )
 
-func file_cardwar_proto_rawDescGZIP() []byte {
-	file_cardwar_proto_rawDescOnce.Do(func() {
-		file_cardwar_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_cardwar_proto_rawDesc), len(file_cardwar_proto_rawDesc)))
+func file_protocol_proto_cardwar_proto_rawDescGZIP() []byte {
+	file_protocol_proto_cardwar_proto_rawDescOnce.Do(func() {
+		file_protocol_proto_cardwar_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_protocol_proto_cardwar_proto_rawDesc), len(file_protocol_proto_cardwar_proto_rawDesc)))
 	})
-	return file_cardwar_proto_rawDescData
+	return file_protocol_proto_cardwar_proto_rawDescData
 }
 
-var file_cardwar_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
-var file_cardwar_proto_goTypes = []any{
+var file_protocol_proto_cardwar_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_protocol_proto_cardwar_proto_goTypes = []any{
 	(*LoginReq)(nil),      // 0: pb.LoginReq
 	(*LoginRsp)(nil),      // 1: pb.LoginRsp
 	(*ChatReq)(nil),       // 2: pb.ChatReq
@@ -344,7 +344,7 @@ var file_cardwar_proto_goTypes = []any{
 	(*Envelope)(nil),      // 4: pb.Envelope
 	nil,                   // 5: pb.Envelope.ConnTagsEntry
 }
-var file_cardwar_proto_depIdxs = []int32{
+var file_protocol_proto_cardwar_proto_depIdxs = []int32{
 	5, // 0: pb.Envelope.conn_tags:type_name -> pb.Envelope.ConnTagsEntry
 	1, // [1:1] is the sub-list for method output_type
 	1, // [1:1] is the sub-list for method input_type
@@ -353,26 +353,26 @@ var file_cardwar_proto_depIdxs = []int32{
 	0, // [0:1] is the sub-list for field type_name
 }
 
-func init() { file_cardwar_proto_init() }
-func file_cardwar_proto_init() {
-	if File_cardwar_proto != nil {
+func init() { file_protocol_proto_cardwar_proto_init() }
+func file_protocol_proto_cardwar_proto_init() {
+	if File_protocol_proto_cardwar_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cardwar_proto_rawDesc), len(file_cardwar_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_protocol_proto_cardwar_proto_rawDesc), len(file_protocol_proto_cardwar_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_cardwar_proto_goTypes,
-		DependencyIndexes: file_cardwar_proto_depIdxs,
-		MessageInfos:      file_cardwar_proto_msgTypes,
+		GoTypes:           file_protocol_proto_cardwar_proto_goTypes,
+		DependencyIndexes: file_protocol_proto_cardwar_proto_depIdxs,
+		MessageInfos:      file_protocol_proto_cardwar_proto_msgTypes,
 	}.Build()
-	File_cardwar_proto = out.File
-	file_cardwar_proto_goTypes = nil
-	file_cardwar_proto_depIdxs = nil
+	File_protocol_proto_cardwar_proto = out.File
+	file_protocol_proto_cardwar_proto_goTypes = nil
+	file_protocol_proto_cardwar_proto_depIdxs = nil
 }
