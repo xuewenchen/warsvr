@@ -9,12 +9,15 @@ This is a game/chat server (`cardwar`) built on **Zinx v1.2.8** — a TCP framew
 ### Service topology
 
 ```
-Client (WebSocket + JWT) ───> Gateway ───> ChatSvr (TCP)
-                       <───         <───
+Client A ───> Gateway-1 ──┐
+Client B ───> Gateway-2 ──┼──> ChatSvr (TCP server)
+Client C ───> Gateway-1 ──┘
 ```
 
-- **Gateway** (`apps/gateway/cmd/main.go`): Dual-protocol server (TCP:8999 + WebSocket:9000) facing clients. **JWT authentication at connection time** via `SetWebsocketAuth` — validates token before WebSocket upgrade, rejects invalid connections with HTTP 401. **Pure forwarding layer**: config-driven routing with two generic routers (ForwardRouter, ResponseRouter) — no per-message-type routers. Maintains internal TCP connections to backend services via `pkg.Registry`.
-- **ChatSvr** (`apps/chatsvr/cmd/main.go`): A single TCP server (:8001) handling business logic — chat message processing and broadcast generation. No longer handles login; player identity is verified by Gateway before the connection reaches ChatSvr.
+Multiple Gateway instances can connect to a single ChatSvr. Each Gateway `Dial`s ChatSvr, creating a TCP client connection. From ChatSvr's perspective, each Gateway is an incoming connection in `Server.GetConnMgr()`.
+
+- **Gateway** (`apps/gateway/cmd/main.go`): Dual-protocol server (TCP:8999 + WebSocket:9000) facing clients. **JWT authentication at connection time** via `SetWebsocketAuth` — validates token before WebSocket upgrade, rejects invalid connections with HTTP 401. **Pure forwarding layer**: config-driven routing with two generic routers (ForwardRouter, ResponseRouter) — no per-message-type routers. Gateway is **stateless with respect to other Gateways**; it never communicates with peer Gateways. Maintains internal TCP connections to backend services via `pkg.Registry`.
+- **ChatSvr** (`apps/chatsvr/cmd/main.go`): A single TCP server handling business logic. Maintains `PlayerConns` (`sync.Map` of playerId → Gateway connection) learned passively from incoming Envelope `conn_tags["player_id"]`. Uses this for cross-Gateway private message routing. For global broadcast, iterates ALL Gateway connections.
 - **Test Client** (`tools/testclient/cmd/main.go`): WebSocket test client that reads `config.yml` for JWT secret, auto-generates a JWT token for the given player ID, connects to Gateway with `ws://127.0.0.1:9000/ws?token=<JWT>`, then sends chat messages on a 5-second loop.
 
 ### Authentication flow (JWT)
@@ -50,7 +53,9 @@ Server   ── ChatPush ──> all clients (system broadcast)
 
 **ChatPush** (msgID=6, server→client): `{sender_player_id, content, timestamp, target_player_id}` — `target_player_id` lets the client distinguish global messages from private messages directed at them.
 
-**Private routing**: ChatSvr sets `conn_tags["target_player_id"] = "B"` in the Envelope. Gateway's ResponseRouter looks up `PlayerConns` and delivers to that specific player. Global messages use `conn_id=0` (broadcast).
+**Private routing**: ChatSvr sets `conn_tags["target_player_id"] = "B"` in the Envelope. Gateway's ResponseRouter looks up `PlayerConns` and delivers to that specific player. Global messages use `conn_id=0` (broadcast) sent to ALL Gateway connections.
+
+**Multi-Gateway**: ChatSvr passively learns `playerId → Gateway connection` from every incoming Envelope's `conn_tags["player_id"]`. Global broadcast iterates `Server.GetConnMgr().Range()` to send to all Gateways. Private messages are routed to the target player's Gateway connection. Gateway itself is unaware of other Gateways — all cross-Gateway coordination happens at the backend (ChatSvr) level.
 
 ### Key types
 

@@ -13,6 +13,7 @@ import (
 
 type ChatRouter struct {
 	znet.BaseRouter
+	Server ziface.IServer
 }
 
 func (r *ChatRouter) Handle(request ziface.IRequest) {
@@ -38,23 +39,38 @@ func (r *ChatRouter) Handle(request ziface.IRequest) {
 	}
 	pushData, _ := proto.Marshal(push)
 
-	var pushEnv *pb.Envelope
 	if chatReq.TargetPlayerId != "" {
-		// Private: route to target player via Gateway
-		pushEnv = &pb.Envelope{
-			ConnId: 0,
-			Data:   pushData,
-			ConnTags: map[string]string{
-				"target_player_id": chatReq.TargetPlayerId,
-			},
-		}
-		zlog.Ins().InfoF("Chat private: %s -> %s: %s", senderPID, chatReq.TargetPlayerId, chatReq.Content)
+		r.sendPrivate(request.GetConnection(), env.ConnId, chatReq.TargetPlayerId, pushData)
 	} else {
-		// Global: broadcast to all
-		pushEnv = &pb.Envelope{ConnId: 0, Data: pushData}
-		zlog.Ins().InfoF("Chat global: %s: %s", senderPID, chatReq.Content)
+		r.sendGlobal(pushData)
 	}
+}
 
-	pushEnvData, _ := proto.Marshal(pushEnv)
-	request.GetConnection().SendMsg(protocol.MsgIdChatResp, pushEnvData)
+func (r *ChatRouter) sendGlobal(pushData []byte) {
+	envData, _ := proto.Marshal(&pb.Envelope{ConnId: 0, Data: pushData})
+	r.Server.GetConnMgr().Range(func(connID uint64, conn ziface.IConnection, extra interface{}) error {
+		conn.SendMsg(protocol.MsgIdChatResp, envData)
+		return nil
+	}, nil)
+	zlog.Ins().InfoF("Chat global broadcast to %d gateways", r.Server.GetConnMgr().Len())
+}
+
+func (r *ChatRouter) sendPrivate(reqConn ziface.IConnection, senderConnID uint64, targetPID string, pushData []byte) {
+	// Delivery to target: broadcast to ALL Gateways, each Gateway's ResponseRouter checks PlayerConns
+	targetEnv := &pb.Envelope{
+		ConnId:   0,
+		Data:     pushData,
+		ConnTags: map[string]string{"target_player_id": targetPID},
+	}
+	targetEnvData, _ := proto.Marshal(targetEnv)
+	r.Server.GetConnMgr().Range(func(connID uint64, conn ziface.IConnection, extra interface{}) error {
+		conn.SendMsg(protocol.MsgIdChatResp, targetEnvData)
+		return nil
+	}, nil)
+
+	// Confirmation to sender on the original connection
+	senderEnvData, _ := proto.Marshal(&pb.Envelope{ConnId: senderConnID, Data: pushData})
+	reqConn.SendMsg(protocol.MsgIdChatResp, senderEnvData)
+
+	zlog.Ins().InfoF("Chat private to %s", targetPID)
 }

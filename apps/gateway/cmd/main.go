@@ -113,7 +113,7 @@ func initWebSocket(gw *router.GatewayRef, gwID string) {
 	registerForwardRouter(gw)
 }
 
-// 注册backend TCP消息应该用哪个router转发到客户端
+// 注册backend TCP响应路由，负责将后端服务的响应消息转发给正确的客户端连接
 func registerResponseRouter(gw *router.GatewayRef) {
 	rspRouter := &router.ResponseRouter{GW: gw}
 	for backend := range conf.GlobalConfig.Gateway.Routes {
