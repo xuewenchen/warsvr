@@ -16,7 +16,6 @@ type GatewayConfig struct {
 
 type BackendRoute struct {
 	Forward  []uint32 `yaml:"forward"`
-	Response []uint32 `yaml:"response"`
 	RouteKey string   `yaml:"route_key"` // "connId" (default) or "playerId"
 }
 

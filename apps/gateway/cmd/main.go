@@ -16,8 +16,6 @@ import (
 	"github.com/aceld/zinx/znet"
 )
 
-const maxMsgID = 1000
-
 func main() {
 	configPath := flag.String("conf", "config.yml", "path to config file")
 	gwID := flag.String("id", "", "Gateway ID (matches config services.gateway[].id)")
@@ -118,10 +116,10 @@ func initWebSocket(gw *router.GatewayRef, gwID string) {
 // 注册backend TCP消息应该用哪个router转发到客户端
 func registerResponseRouter(gw *router.GatewayRef) {
 	rspRouter := &router.ResponseRouter{GW: gw}
-	for backend, rc := range conf.GlobalConfig.Gateway.Routes {
-		routers := make([]pkg.BackendRouterConfig, len(rc.Response))
-		for i, msgID := range rc.Response {
-			routers[i] = pkg.BackendRouterConfig{MsgID: msgID, Router: rspRouter}
+	for backend := range conf.GlobalConfig.Gateway.Routes {
+		routers := make([]pkg.BackendRouterConfig, 0, pkg.MaxMsgID)
+		for msgID := uint32(1); msgID <= pkg.MaxMsgID; msgID++ {
+			routers = append(routers, pkg.BackendRouterConfig{MsgID: msgID, Router: rspRouter})
 		}
 		gw.Dial(backend, routers, pkg.HashRoute)
 	}
@@ -130,7 +128,7 @@ func registerResponseRouter(gw *router.GatewayRef) {
 // 注册websocket消息应该转发到哪个后端服务
 func registerForwardRouter(gw *router.GatewayRef) {
 	fwdRouter := &router.ForwardRouter{GW: gw}
-	for msgID := uint32(1); msgID <= maxMsgID; msgID++ {
+	for msgID := uint32(1); msgID <= pkg.MaxMsgID; msgID++ {
 		if msgID == protocol.MsgIdPing {
 			continue // Ping is handled locally
 		}
