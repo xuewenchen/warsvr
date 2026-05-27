@@ -37,7 +37,10 @@
       "Bash(awk '{print $5}')",
       "Bash(gofmt -w pkg/broadcast_test.go pkg/pool_test.go pkg/errors_test.go pkg/auth/jwt_test.go conf/config_test.go apps/gateway/internal/router/gateway_ref_test.go apps/chatsvr/internal/router/chat_router_test.go)",
       "Bash(chmod +x *)",
-      "Bash(./scripts/build.bat)"
+      "Bash(./scripts/build.bat)",
+      "Bash(protoc --csharp_out=/tmp/test .)",
+      "Bash(mkdir -p examples/csharp/CardWarClient)",
+      "Bash(protoc --csharp_out=examples/csharp/CardWarClient --proto_path=protocol/proto protocol/proto/cardwar.proto)"
     ]
   }
 }
