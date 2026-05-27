@@ -1,3 +1,5 @@
 .claude
 *.exebin/
 bin/*
+examples/csharp/CardWarClient/bin/
+examples/csharp/CardWarClient/obj/

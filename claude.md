@@ -201,3 +201,23 @@ Both ChatSvr and Gateway support an optional `-id` flag to select which config e
 | `protocol/proto/cardwar.proto` | Protobuf definitions (Envelope, ChatReq, etc.) |
 | `protocol/msgid.go` | Flat message ID constants |
 | `config.yml` | Service instances, JWT secret, gateway routes |
+
+### Wire format (Zinx DataPack)
+
+Zinx v1.2.8 uses **BigEndian `DataPack`** by default. Every TCP/WebSocket message is framed:
+
+```
+[4B msgID BigEndian][4B dataLen BigEndian][protobuf body]
+```
+
+Example — sending ChatReq (msgID=5, "hello"):
+```
+00 00 00 05   00 00 00 15   0A 0D 68 65 6C 6C 6F ...
+   msgID=5      dataLen=21     protobuf ChatReq bytes
+```
+
+Two implementations exist in `zpack/`:
+- **`DataPack`** (default): BigEndian, msgID first — used by all servers/clients
+- **`DataPackLtv`** (legacy): LittleEndian, dataLen first — backward compat only
+
+Non-Go clients MUST use BigEndian msgID-first format when implementing the wire protocol.
