@@ -51,7 +51,25 @@
       "Bash(./scripts/svc.bat stop *)",
       "Bash(grep -q '^log/$' .gitignore)",
       "Bash(echo 'log/')",
-      "Bash(tasklist /fi \"imagename eq chatsvr.exe\")"
+      "Bash(tasklist /fi \"imagename eq chatsvr.exe\")",
+      "Bash(bin/svchelper.exe list *)",
+      "Bash(go list *)",
+      "Bash(bin/svchelper.exe type *)",
+      "Bash(taskkill //F //IM gateway.exe)",
+      "Bash(taskkill //F //IM chatsvr.exe)",
+      "Bash(./bin/svchelper.exe port *)",
+      "Bash(ping -n 2 127.0.0.1)",
+      "Bash(bin/svchelper.exe port *)",
+      "Bash(cmd //c \"scripts\\\\\\\\svc.bat start gw-1\")",
+      "Bash(powershell *)",
+      "Bash(ping -n 1 127.0.0.1)",
+      "Bash(bash -c 'cmd //c \"scripts\\\\\\\\svc.bat start gw-1\" 2>&1')",
+      "Bash(cmd //c 'scripts\\\\svc.bat start gw-1')",
+      "Bash(cmd //c 'echo test & ping -n 2 127.0.0.1 >nul & echo done')",
+      "Bash(cmd //c \"echo %TEMP%\")",
+      "Bash(bin/svchelper.exe start *)",
+      "Bash(bin/svchelper.exe stop *)",
+      "Bash(bin/svchelper.exe restart *)"
     ]
   }
 }

@@ -4,84 +4,66 @@
 
 ```
 # Linux
-./scripts/svc.sh <cmd> <target> [config] [id]
+./scripts/svc.sh <cmd> <instance> [config]
 
 # Windows
-scripts\svc.bat <cmd> <target> [config] [id]
+scripts\svc.bat <cmd> <instance> [config]
 ```
+
+Uses config.yml instance IDs directly. Prefix auto-detects service type:
+- `cs-*` = ChatSvr
+- `gw-*` = Gateway
 
 ### Commands
 
 | cmd | action |
 |---|---|
-| `build <target>` | Compile binary only |
-| `start <target>` | Run compiled binary (auto-builds if missing) |
-| `stop <target>` | Kill running process |
-| `restart <target>` | stop + start |
-| `reboot <target>` | stop + build + start |
+| `build <target>` | Compile binary |
+| `start <instance>` | Run from binary (auto-builds if missing) |
+| `stop <instance>` | Kill process |
+| `restart <instance>` | stop + start |
+| `reboot <instance>` | stop + build + start |
 
 ### Targets
 
-| target | service |
+| target | what it does |
 |---|---|
-| `chatsvr` | ChatSvr only |
-| `gateway` | Gateway only |
-| `all` | Both (starts ChatSvr first, then Gateway) |
-
-### Config & Instance ID
-
-| arg | default | description |
-|---|---|---|
-| `config` | `config.yml` | Path to config YAML file |
-| `id` | first in array | Instance ID matching `services.xxx[].id` in config |
+| `cs-1` | ChatSvr instance cs-1 from config |
+| `gw-1` | Gateway instance gw-1 from config |
+| `gw-2` | Gateway instance gw-2 |
+| `all` | All instances in config.yml |
 
 ### Examples
 
 ```bash
 # Build
-scripts\svc.bat build all                    # compile everything
-scripts\svc.bat build gateway                # compile Gateway only
+scripts\svc.bat build all              # compile everything
 
-# Start (single instance, default config)
-scripts\svc.bat start chatsvr                # ChatSvr, first instance from config.yml
-scripts\svc.bat start gateway                # Gateway, first instance from config.yml
-scripts\svc.bat start all                    # both, with 1s gap
+# Start by config ID
+scripts\svc.bat start cs-1             # ChatSvr cs-1 from config.yml
+scripts\svc.bat start gw-1             # Gateway gw-1 from config.yml
+scripts\svc.bat start gw-1 prod.yml    # gw-1 with custom config
 
-# Start (custom config)
-scripts\svc.bat start chatsvr prod.yml       # ChatSvr, prod config, first instance
-scripts\svc.bat start gateway prod.yml gw-1  # Gateway, prod config, gw-1 instance
+# Start all (reads config.yml for all cs-*/gw-* IDs)
+scripts\svc.bat start all
 
 # Stop
-scripts\svc.bat stop chatsvr                 # kill ChatSvr only
-scripts\svc.bat stop all                     # kill both
+scripts\svc.bat stop gw-2              # kill gw-2 only
+scripts\svc.bat stop all               # kill everything
 
-# Restart (stop + start)
-scripts\svc.bat restart chatsvr prod.yml cs-2  # kill cs-2, restart from prod.yml
-
-# Reboot (stop + build + start)
-scripts\svc.bat reboot all prod.yml          # full rebuild for prod config
-scripts\svc.bat reboot gateway               # rebuild + restart gateway
+# Restart / Reboot
+scripts\svc.bat restart gw-1           # quick restart
+scripts\svc.bat reboot all prod.yml    # full rebuild + restart for prod
 ```
 
-### Multi-Instance (cluster simulation)
-
-Run multiple Gateways or ChatSvrs by passing different IDs:
-
-```bash
-# Terminal 1
-scripts\svc.bat start chatsvr config.yml cs-1
-
-# Terminal 2
-scripts\svc.bat start gateway config.yml gw-1
-
-# Terminal 3 - second Gateway
-scripts\svc.bat start gateway config.yml gw-2
-```
-
-Requires the config to have matching entries:
+### Multi-Gateway setup
 
 ```yaml
+# config.yml
 services:
+  chatsvr:
+    - id: cs-1
+      listen: 0.0.0.0:8001
   gateway:
     - id: gw-1
       tcp_listen: 0.0.0.0:8999
@@ -89,27 +71,25 @@ services:
     - id: gw-2
       tcp_listen: 0.0.0.0:8998
       ws_listen: 0.0.0.0:9001
-  chatsvr:
-    - id: cs-1
-      listen: 0.0.0.0:8001
 ```
+
+```bash
+scripts\svc.bat start all              # starts cs-1, gw-1, gw-2
+scripts\svc.bat stop gw-2              # kill gw-2 only
+scripts\svc.bat restart cs-1           # restart ChatSvr
+```
+
+## Web Chat Test
+
+```
+test\webchat\index.html
+```
+
+Open in browser. Two-player chat panel, supports global + private, multi-Gateway.
 
 ## Generate Protobuf
 
 ```bash
-./scripts/gen_pb.sh                 # Linux
-scripts\gen_pb.bat                  # Windows
-```
-
-## Test Clients
-
-```bash
-go run ./tools/testclient/cmd/ 1    # Player 1
-go run ./tools/testclient/cmd/ 2    # Player 2
-```
-
-## Load Test
-
-```bash
-go run ./tools/loadtest/cmd/ -c 50 -d 30    # 50 clients, 30 seconds
+./scripts/gen_pb.sh   # Linux
+scripts\gen_pb.bat    # Windows
 ```

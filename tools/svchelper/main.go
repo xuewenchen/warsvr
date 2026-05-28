@@ -1,0 +1,343 @@
+package main
+
+import (
+	"cardwar/pkg/conf"
+	"context"
+	"fmt"
+	"os"
+	"os/exec"
+	"strconv"
+	"strings"
+	"time"
+)
+
+func main() {
+	if len(os.Args) < 2 {
+		usage()
+		os.Exit(1)
+	}
+
+	cmd := os.Args[1]
+	if cmd == "list" || cmd == "type" || cmd == "port" {
+		handleQuery(os.Args)
+		return
+	}
+
+	// service commands: build, start, stop, restart, reboot
+	if len(os.Args) < 3 {
+		fmt.Fprintf(os.Stderr, "Usage: svchelper %s <cs-1|gw-1|all> [config.yml]\n", cmd)
+		os.Exit(1)
+	}
+
+	configPath := "config.yml"
+	target := os.Args[2]
+	if len(os.Args) > 3 {
+		configPath = os.Args[3]
+	}
+
+	if err := conf.Load(configPath); err != nil {
+		fmt.Fprintf(os.Stderr, "load config: %v\n", err)
+		os.Exit(1)
+	}
+
+	switch cmd {
+	case "build":
+		doBuild(target)
+	case "start":
+		doStart(target, configPath)
+	case "stop":
+		doStop(target)
+	case "restart":
+		doStop(target)
+		time.Sleep(1 * time.Second)
+		doStart(target, configPath)
+	case "reboot":
+		doStop(target)
+		doBuild(target)
+		doStart(target, configPath)
+	default:
+		usage()
+		os.Exit(1)
+	}
+}
+
+func usage() {
+	fmt.Println("Usage: svchelper <cmd> <instance|all> [config.yml]")
+	fmt.Println()
+	fmt.Println("Commands:")
+	fmt.Println("  build <xxx>     compile binary")
+	fmt.Println("  start <xxx>     run binary")
+	fmt.Println("  stop <xxx>      kill process by port")
+	fmt.Println("  restart <xxx>   stop + start")
+	fmt.Println("  reboot <xxx>    stop + build + start")
+	fmt.Println("  list [config]   show all instances")
+	fmt.Println("  type <id>       get service type for instance")
+	fmt.Println("  port <id>       get listen port for instance")
+}
+
+// ---- query commands ----
+
+func handleQuery(args []string) {
+	configPath := "config.yml"
+	if len(args) > 2 {
+		configPath = args[len(args)-1]
+	}
+	if err := conf.Load(configPath); err != nil {
+		fmt.Fprintf(os.Stderr, "load config: %v\n", err)
+		os.Exit(1)
+	}
+	switch args[1] {
+	case "list":
+		for svcName, nodes := range conf.GlobalConfig.Services {
+			for _, n := range nodes {
+				if n.ID != "" {
+					fmt.Printf("%s %s\n", n.ID, svcName)
+				}
+			}
+		}
+	case "type":
+		if len(args) < 3 {
+			os.Exit(1)
+		}
+		svc, _ := findServiceNode(args[2])
+		if svc == "" {
+			os.Exit(1)
+		}
+		fmt.Println(svc)
+	case "port":
+		if len(args) < 3 {
+			os.Exit(1)
+		}
+		_, node := findServiceNode(args[2])
+		if node == nil {
+			os.Exit(1)
+		}
+		_, p := parseHostPort(listenAddr(node))
+		fmt.Println(p)
+	}
+}
+
+// ---- service commands ----
+
+func doBuild(target string) {
+	if target == "all" {
+		buildOne("chatsvr")
+		buildOne("gateway")
+		return
+	}
+	svc, _ := findServiceNode(target)
+	if svc == "" {
+		fmt.Fprintf(os.Stderr, "ERROR: instance %q not found in config\n", target)
+		os.Exit(1)
+	}
+	buildOne(svc)
+}
+
+func buildOne(svc string) {
+	fmt.Printf(">>> Building %s...\n", svc)
+	cmd := exec.Command("go", "build", "-o", fmt.Sprintf("bin/%s%s", svc, exeExt()), "./apps/"+svc+"/cmd/")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "build failed: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("  -> bin/%s%s\n", svc, exeExt())
+}
+
+func doStart(target, configPath string) {
+	if target == "all" {
+		fmt.Printf("Starting all from %s...\n", configPath)
+		for _, inst := range listInstances() {
+			startOne(inst.svc, inst.id, inst.port, configPath)
+			time.Sleep(1 * time.Second)
+		}
+		return
+	}
+	svc, node := findServiceNode(target)
+	if svc == "" {
+		fmt.Fprintf(os.Stderr, "ERROR: instance %q not found in config\n", target)
+		os.Exit(1)
+	}
+	_, port := parseHostPort(listenAddr(node))
+	startOne(svc, target, port, configPath)
+}
+
+func startOne(svc, id string, port int, configPath string) {
+	if portOccupied(port) {
+		fmt.Printf("  %s (%s) is already running on port %d\n", svc, id, port)
+		return
+	}
+
+	bin := "bin/" + svc + exeExt()
+	if _, err := os.Stat(bin); os.IsNotExist(err) {
+		buildOne(svc)
+	}
+
+	logName := svc
+	if id != "" {
+		logName = svc + "-" + id
+	}
+	os.MkdirAll("log", 0755)
+	logPath := "log/" + logName + ".log"
+
+	fmt.Printf(">>> Starting %s (conf=%s, id=%s)...\n", svc, configPath, id)
+
+	args := []string{"-conf", configPath}
+	if id != "" {
+		args = append(args, "-id", id)
+	}
+
+	logFile, _ := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	cmd := exec.Command(bin, args...)
+	cmd.Stdout = logFile
+	cmd.Stderr = logFile
+	if err := cmd.Start(); err != nil {
+		fmt.Fprintf(os.Stderr, "  FAILED to start: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Wait and verify port
+	time.Sleep(2 * time.Second)
+	if portOccupied(port) {
+		fmt.Printf("  OK (pid:%d, port:%d, log:%s)\n", cmd.Process.Pid, port, logPath)
+		// Save PID for stop
+		pidDir := "bin/.pids"
+		os.MkdirAll(pidDir, 0755)
+		os.WriteFile(pidDir+"/"+svc+".pid", []byte(strconv.Itoa(cmd.Process.Pid)), 0644)
+	} else {
+		fmt.Printf("  FAILED - port %d not listening. Tail log:\n", port)
+		cmd.Process.Kill()
+		printLogTail(logPath)
+		os.Exit(1)
+	}
+}
+
+func doStop(target string) {
+	if target == "all" {
+		for _, inst := range listInstances() {
+			killByPort(inst.port, inst.svc)
+		}
+		return
+	}
+	svc, node := findServiceNode(target)
+	if svc == "" {
+		fmt.Fprintf(os.Stderr, "ERROR: instance %q not found in config\n", target)
+		os.Exit(1)
+	}
+	_, port := parseHostPort(listenAddr(node))
+	killByPort(port, svc)
+}
+
+func killByPort(port int, svc string) {
+	fmt.Printf(">>> Stopping %s (port %d)...\n", svc, port)
+	pid := findPIDByPort(port)
+	if pid > 0 {
+		p, _ := os.FindProcess(pid)
+		p.Kill()
+		time.Sleep(300 * time.Millisecond)
+		fmt.Println("  Stopped")
+	} else {
+		fmt.Println("  Not running")
+	}
+}
+
+// ---- helpers ----
+
+type instance struct {
+	svc  string
+	id   string
+	port int
+}
+
+func listInstances() []instance {
+	var list []instance
+	for svcName, nodes := range conf.GlobalConfig.Services {
+		for _, n := range nodes {
+			if n.ID != "" {
+				_, p := parseHostPort(listenAddr(&n))
+				list = append(list, instance{svc: svcName, id: n.ID, port: p})
+			}
+		}
+	}
+	return list
+}
+
+func listenAddr(n *conf.ServerNode) string {
+	if n.WSListen != "" {
+		return n.WSListen // gateway: client-facing port
+	}
+	return n.Listen // chatsvr & others
+}
+
+func findServiceNode(id string) (string, *conf.ServerNode) {
+	for svcName, nodes := range conf.GlobalConfig.Services {
+		for i := range nodes {
+			if nodes[i].ID == id {
+				return svcName, &nodes[i]
+			}
+		}
+	}
+	return "", nil
+}
+
+func parseHostPort(addr string) (string, int) {
+	parts := strings.Split(addr, ":")
+	if len(parts) != 2 {
+		return "", 0
+	}
+	port, _ := strconv.Atoi(parts[1])
+	return parts[0], port
+}
+
+// portOccupied checks if a TCP port is currently listening.
+func portOccupied(port int) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "netstat", "-ano")
+	out, _ := cmd.Output()
+	return strings.Contains(string(out), fmt.Sprintf(":%d ", port)) &&
+		strings.Contains(string(out), "LISTENING")
+}
+
+// findPIDByPort returns the PID listening on a port.
+func findPIDByPort(port int) int {
+	cmd := exec.Command("netstat", "-ano")
+	out, err := cmd.Output()
+	if err != nil {
+		return 0
+	}
+	lines := strings.Split(string(out), "\n")
+	for _, line := range lines {
+		if strings.Contains(line, fmt.Sprintf(":%d ", port)) && strings.Contains(line, "LISTENING") {
+			fields := strings.Fields(line)
+			if len(fields) >= 5 {
+				pid, _ := strconv.Atoi(fields[len(fields)-1])
+				return pid
+			}
+		}
+	}
+	return 0
+}
+
+func printLogTail(path string) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return
+	}
+	lines := strings.Split(string(data), "\n")
+	start := 0
+	if len(lines) > 6 {
+		start = len(lines) - 6
+	}
+	for _, line := range lines[start:] {
+		fmt.Println(line)
+	}
+}
+
+func exeExt() string {
+	if os.PathSeparator == '\\' {
+		return ".exe"
+	}
+	return ""
+}
