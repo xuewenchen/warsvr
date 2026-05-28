@@ -54,6 +54,7 @@ type connEntry struct {
 	mu           sync.Mutex
 	conn         ziface.IConnection
 	healthy      bool
+	stopped      bool // true = removed from pool, reconnect stops
 	backoff      time.Duration
 	reconnecting bool
 }
@@ -144,13 +145,132 @@ func (p *Pool) Route(key string) ziface.IConnection {
 	return p.routeFn(key, p.HealthyConns())
 }
 
+// AddServer connects to a single new server and appends it to the pool.
+// Blocks until the first connection succeeds or times out.
+func (p *Pool) AddServer(srv conf.ServerNode, service string, routers []BackendRouterConfig, routeFn RouteFunc, registerMsgID uint32) {
+	p.mu.Lock()
+	idx := len(p.conns)
+	entry := &connEntry{
+		addr:          srv.Listen,
+		routers:       routers,
+		registerMsgID: registerMsgID,
+		backoff:       reconnectInitBackoff,
+	}
+	p.conns = append(p.conns, entry)
+	p.routeFn = routeFn
+	p.mu.Unlock()
+
+	host, port := conf.ParseHostPort(srv.Listen)
+	client := znet.NewClient(host, port)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	client.SetOnConnStart(func(conn ziface.IConnection) {
+		if registerMsgID != 0 {
+			conn.SendMsg(registerMsgID, []byte{})
+		}
+		entry.mu.Lock()
+		if !entry.stopped {
+			entry.conn = conn
+			entry.healthy = true
+		}
+		entry.mu.Unlock()
+		zlog.Ins().InfoF("Pool: added server %s[%s]: %s", service, srv.ID, conn.RemoteAddr())
+		wg.Done()
+	})
+	client.SetOnConnStop(func(conn ziface.IConnection) {
+		zlog.Ins().InfoF("Pool: server disconnected %s[%s]", service, srv.ID)
+		p.OnDisconnect(idx)
+	})
+
+	for _, rc := range routers {
+		client.AddRouter(rc.MsgID, rc.Router)
+	}
+	client.Start()
+
+	done := make(chan struct{})
+	go func() { wg.Wait(); close(done) }()
+	select {
+	case <-done:
+	case <-time.After(reconnectTimeout):
+		zlog.Ins().ErrorF("Pool: timeout connecting to %s[%s] at %s", service, srv.ID, srv.Listen)
+		client.Stop()
+		entry.mu.Lock()
+		entry.stopped = true
+		entry.mu.Unlock()
+	}
+}
+
+// RemoveServer stops a server by address and marks it for removal from the pool.
+func (p *Pool) RemoveServer(addr string) {
+	p.mu.RLock()
+	var target *connEntry
+	for _, e := range p.conns {
+		if e.addr == addr && !e.stopped {
+			target = e
+			break
+		}
+	}
+	p.mu.RUnlock()
+	if target == nil {
+		return
+	}
+	target.mu.Lock()
+	target.stopped = true
+	if target.conn != nil {
+		target.conn.Stop()
+	}
+	target.mu.Unlock()
+}
+
+// ServerAddrs returns the listen addresses of all non-stopped pool entries.
+func (p *Pool) ServerAddrs() []string {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	var addrs []string
+	for _, e := range p.conns {
+		if !e.stopped {
+			addrs = append(addrs, e.addr)
+		}
+	}
+	return addrs
+}
+
+// Sync adds new servers and removes old ones to match the given server list.
+func (p *Pool) Sync(servers []conf.ServerNode, service string, routers []BackendRouterConfig, routeFn RouteFunc, registerMsgID uint32) {
+	current := make(map[string]bool)
+	for _, addr := range p.ServerAddrs() {
+		current[addr] = true
+	}
+	wanted := make(map[string]conf.ServerNode)
+	for _, srv := range servers {
+		wanted[srv.Listen] = srv
+	}
+
+	// Add new servers
+	for addr, srv := range wanted {
+		if !current[addr] {
+			zlog.Ins().InfoF("Pool: syncing new server %s[%s] at %s", service, srv.ID, addr)
+			p.AddServer(srv, service, routers, routeFn, registerMsgID)
+		}
+	}
+
+	// Remove servers no longer configured
+	for addr := range current {
+		if _, ok := wanted[addr]; !ok {
+			zlog.Ins().InfoF("Pool: removing server %s %s", service, addr)
+			p.RemoveServer(addr)
+		}
+	}
+}
+
 // HealthyConns returns all currently healthy connections. Safe for concurrent use.
 func (p *Pool) HealthyConns() []ziface.IConnection {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 	healthy := make([]ziface.IConnection, 0, len(p.conns))
 	for _, e := range p.conns {
-		if e.healthy && e.conn != nil {
+		if e.healthy && e.conn != nil && !e.stopped {
 			healthy = append(healthy, e.conn)
 		}
 	}
@@ -166,7 +286,7 @@ func (p *Pool) OnDisconnect(idx int) {
 	e.mu.Lock()
 	e.healthy = false
 	e.conn = nil
-	if e.reconnecting {
+	if e.reconnecting || e.stopped {
 		e.mu.Unlock()
 		return
 	}
@@ -238,6 +358,10 @@ func (p *Pool) reconnectLoop(idx int) {
 		}
 
 		e.mu.Lock()
+		if e.stopped {
+			e.mu.Unlock()
+			return
+		}
 		if e.backoff < reconnectMaxBackoff {
 			e.backoff *= 2
 		}

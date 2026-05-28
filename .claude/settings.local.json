@@ -70,7 +70,13 @@
       "Bash(bin/svchelper.exe start *)",
       "Bash(bin/svchelper.exe stop *)",
       "Bash(bin/svchelper.exe restart *)",
-      "Bash(bin/svchelper.exe jwt *)"
+      "Bash(bin/svchelper.exe jwt *)",
+      "Bash(bin/svchelper.exe build *)",
+      "Bash(bin/svchelper.exe conns *)",
+      "Bash(findstr \":8003\")",
+      "Bash(findstr \"gateway\")",
+      "Bash(findstr \"SYN\")",
+      "Bash(bin/svchelper.exe status *)"
     ]
   }
 }

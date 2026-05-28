@@ -35,12 +35,20 @@ func main() {
 	gw.SetRoutes(routeIndex)
 
 	// 注册TCP响应路由
-	registerResponseRouter(gw)
+	rspRouter := &router.ResponseRouter{GW: gw}
+	registerResponseRouter(gw, rspRouter)
 
 	if _, err := conf.Watch(*configPath, func(cfg *conf.Config) {
 		newIndex := router.BuildRouteIndex(cfg.Gateway)
 		gw.SetRoutes(newIndex)
-		zlog.Ins().InfoF("Gateway: routes hot-reloaded (%d msgIDs)", len(newIndex))
+		for backend := range cfg.Gateway.Routes {
+			routers := make([]pkg.BackendRouterConfig, 0, pkg.MaxMsgID)
+			for msgID := uint32(1); msgID <= pkg.MaxMsgID; msgID++ {
+				routers = append(routers, pkg.BackendRouterConfig{MsgID: msgID, Router: rspRouter})
+			}
+			gw.SyncBackend(backend, routers, pkg.HashRoute, protocol.MsgIdGatewayRegister)
+		}
+		zlog.Ins().InfoF("Gateway: hot-reloaded (%d msgIDs, %d backends)", len(newIndex), len(cfg.Gateway.Routes))
 	}); err != nil {
 		zlog.Ins().ErrorF("Gateway: config watch failed: %v", err)
 	}
@@ -114,8 +122,7 @@ func initWebSocket(gw *router.GatewayRef, gwID string) {
 }
 
 // 注册backend TCP响应路由，负责将后端服务的响应消息转发给正确的客户端连接
-func registerResponseRouter(gw *router.GatewayRef) {
-	rspRouter := &router.ResponseRouter{GW: gw}
+func registerResponseRouter(gw *router.GatewayRef, rspRouter *router.ResponseRouter) {
 	for backend := range conf.GlobalConfig.Gateway.Routes {
 		routers := make([]pkg.BackendRouterConfig, 0, pkg.MaxMsgID)
 		for msgID := uint32(1); msgID <= pkg.MaxMsgID; msgID++ {

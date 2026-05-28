@@ -13,10 +13,17 @@ services:
     - id: cs-1
       listen: 0.0.0.0:8001
       public_addr: 127.0.0.1:8001
-
+    - id: cs-2
+      listen: 0.0.0.0:8002
+      public_addr: 127.0.0.1:8002
+    - id: cs-3
+      listen: 0.0.0.0:8003
+      public_addr: 127.0.0.1:8003
 gateway:
   jwt_secret: "change-me-in-production"
   routes:
     chatsvr:
       forward: [5]          # MsgIdChat
       route_key: playerId
+
+      

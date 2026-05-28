@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"cardwar/pkg/conf"
 	"sync"
 
 	"github.com/aceld/zinx/ziface"
@@ -35,4 +36,18 @@ func (r *Registry) RouteTo(backend, key string) ziface.IConnection {
 		return nil
 	}
 	return p.Route(key)
+}
+
+// SyncBackend adds new servers and removes old ones for a backend service.
+func (r *Registry) SyncBackend(service string, routers []BackendRouterConfig, routeFn RouteFunc, registerMsgID uint32) {
+	servers := conf.GlobalConfig.Services[service]
+	r.mu.RLock()
+	pool := r.backends[service]
+	r.mu.RUnlock()
+	if pool == nil {
+		return
+	}
+	if p, ok := pool.(*Pool); ok {
+		p.Sync(servers, service, routers, routeFn, registerMsgID)
+	}
 }

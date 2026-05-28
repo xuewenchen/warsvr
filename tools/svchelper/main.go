@@ -19,7 +19,7 @@ func main() {
 	}
 
 	cmd := os.Args[1]
-	if cmd == "list" || cmd == "type" || cmd == "port" || cmd == "jwt" {
+	if cmd == "list" || cmd == "type" || cmd == "port" || cmd == "jwt" || cmd == "status" || cmd == "conns" {
 		handleQuery(os.Args)
 		return
 	}
@@ -71,6 +71,7 @@ func usage() {
 	fmt.Println("  stop <xxx>      kill process by port")
 	fmt.Println("  restart <xxx>   stop + start")
 	fmt.Println("  reboot <xxx>    stop + build + start")
+	fmt.Println("  status          show full cluster topology & connections")
 	fmt.Println("  list [config]   show all instances")
 	fmt.Println("  type <id>       get service type for instance")
 	fmt.Println("  port <id>       get listen port for instance")
@@ -81,14 +82,15 @@ func usage() {
 
 func handleQuery(args []string) {
 	configPath := "config.yml"
-	// Use last arg as config only if it ends with .yml/.yaml or has >=4 args
-	if len(args) >= 4 || (len(args) == 3 && strings.HasSuffix(args[2], ".yml")) {
+	// Load config for all query commands
+	if len(args) >= 3 && strings.HasSuffix(args[len(args)-1], ".yml") {
 		configPath = args[len(args)-1]
 	}
 	if err := conf.Load(configPath); err != nil {
 		fmt.Fprintf(os.Stderr, "load config: %v\n", err)
 		os.Exit(1)
 	}
+
 	switch args[1] {
 	case "list":
 		for svcName, nodes := range conf.GlobalConfig.Services {
@@ -130,6 +132,9 @@ func handleQuery(args []string) {
 			os.Exit(1)
 		}
 		fmt.Println(token)
+
+	case "status", "conns":
+		showStatus()
 	}
 }
 
@@ -139,6 +144,10 @@ func doBuild(target string) {
 	if target == "all" {
 		buildOne("chatsvr")
 		buildOne("gateway")
+		return
+	}
+	if target == "chatsvr" || target == "gateway" {
+		buildOne(target)
 		return
 	}
 	svc, _ := findServiceNode(target)
@@ -334,6 +343,102 @@ func findPIDByPort(port int) int {
 		}
 	}
 	return 0
+}
+
+func showStatus() {
+	out, _ := exec.Command("netstat", "-ano").Output()
+	nets := strings.Split(string(out), "\n")
+
+	fmt.Println()
+	fmt.Println("=== Gateway Instances ===")
+	for _, inst := range listInstancesOf("gateway") {
+		pid := findPIDByPort(inst.wsPort)
+		status := "DOWN"
+		if pid > 0 {
+			status = fmt.Sprintf("RUNNING (pid:%d)", pid)
+		}
+		fmt.Printf("  %s  ws:%d  tcp:%d  %s\n", inst.id, inst.wsPort, inst.tcpPort, status)
+		if pid > 0 {
+			for _, cs := range listInstancesOf("chatsvr") {
+				state := connState(nets, pid, cs.port)
+				fmt.Printf("    ├── %s  :%d  %s\n", cs.id, cs.port, state)
+			}
+		}
+	}
+
+	fmt.Println()
+	fmt.Println("=== Backend Instances ===")
+	for svc, list := range groupByService() {
+		if svc == "gateway" {
+			continue
+		}
+		title := svc
+		if len(title) > 0 {
+			title = strings.ToUpper(title[:1]) + title[1:]
+		}
+		fmt.Printf("%s:\n", title)
+		for _, inst := range list {
+			pid := findPIDByPort(inst.port)
+			gwCount := 0
+			for _, gw := range listInstancesOf("gateway") {
+				gwPID := findPIDByPort(gw.wsPort)
+				if gwPID > 0 && connState(nets, gwPID, inst.port) == "ESTABLISHED" {
+					gwCount++
+				}
+			}
+			status := "DOWN"
+			if pid > 0 {
+				status = fmt.Sprintf("RUNNING (pid:%d, %d gateway(s))", pid, gwCount)
+			}
+			fmt.Printf("  %s  :%d  %s\n", inst.id, inst.port, status)
+		}
+	}
+}
+
+type svcInstance struct {
+	id      string
+	svc     string
+	port    int
+	wsPort  int
+	tcpPort int
+}
+
+func listInstancesOf(svc string) []svcInstance {
+	var list []svcInstance
+	nodes := conf.GlobalConfig.Services[svc]
+	for _, n := range nodes {
+		inst := svcInstance{id: n.ID, svc: svc}
+		if svc == "gateway" {
+			_, inst.wsPort = parseHostPort(n.WSListen)
+			_, inst.tcpPort = parseHostPort(n.TCPListen)
+		} else {
+			_, inst.port = parseHostPort(n.Listen)
+		}
+		list = append(list, inst)
+	}
+	return list
+}
+
+func groupByService() map[string][]svcInstance {
+	m := make(map[string][]svcInstance)
+	for svc := range conf.GlobalConfig.Services {
+		if svc == "gateway" {
+			continue
+		}
+		m[svc] = listInstancesOf(svc)
+	}
+	return m
+}
+
+func connState(nets []string, pid, port int) string {
+	for _, line := range nets {
+		if strings.Contains(line, fmt.Sprintf(":%d", port)) &&
+			strings.Contains(line, "ESTABLISHED") &&
+			strings.Contains(line, strconv.Itoa(pid)) {
+			return "ESTABLISHED"
+		}
+	}
+	return "NOT CONNECTED"
 }
 
 func printLogTail(path string) {
