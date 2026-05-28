@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"cardwar/conf"
+	"cardwar/pkg/conf"
 
 	"github.com/aceld/zinx/ziface"
 	"github.com/aceld/zinx/zlog"

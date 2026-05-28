@@ -1,8 +1,8 @@
 package main
 
 import (
-	"cardwar/conf"
 	"cardwar/pkg/auth"
+	"cardwar/pkg/conf"
 	"cardwar/protocol"
 	"cardwar/protocol/pb"
 	"cardwar/tools/testclient/cmd/router"

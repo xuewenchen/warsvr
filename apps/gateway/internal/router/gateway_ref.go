@@ -1,8 +1,8 @@
 package router
 
 import (
-	"cardwar/conf"
 	"cardwar/pkg"
+	"cardwar/pkg/conf"
 	"sync"
 
 	"github.com/aceld/zinx/ziface"

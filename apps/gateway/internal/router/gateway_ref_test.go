@@ -1,7 +1,7 @@
 package router
 
 import (
-	"cardwar/conf"
+	"cardwar/pkg/conf"
 	"testing"
 )
 

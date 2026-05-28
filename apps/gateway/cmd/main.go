@@ -2,9 +2,9 @@ package main
 
 import (
 	"cardwar/apps/gateway/internal/router"
-	"cardwar/conf"
 	"cardwar/pkg"
 	"cardwar/pkg/auth"
+	"cardwar/pkg/conf"
 	"cardwar/protocol"
 	"flag"
 	"net/http"
