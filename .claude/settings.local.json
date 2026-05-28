@@ -76,7 +76,11 @@
       "Bash(findstr \":8003\")",
       "Bash(findstr \"gateway\")",
       "Bash(findstr \"SYN\")",
-      "Bash(bin/svchelper.exe status *)"
+      "Bash(bin/svchelper.exe status *)",
+      "Bash(sed -i 's/route_key: playerId   # \"connId\" or \"playerId\"/route_key: playerId   # \"connId\", \"playerId\", or custom property\\\\n      route_type: hash      # \"hash\" \\(default\\) or \"random\"/' CLAUDE.md)",
+      "Bash(sed -i 's/response: \\\\[6\\\\]\\\\n      route_key: playerId/route_key: playerId/' CLAUDE.md)",
+      "Bash(sed -i 's/roomsvr:                # new backend\\\\n      forward: \\\\[7, 8, 9\\\\]\\\\n      response: \\\\[10, 11\\\\]\\\\n      route_key: connId/roomsvr:\\\\n      forward: [7, 8, 9]\\\\n      route_key: roomId     # custom property for stateful routing\\\\n      route_type: hash/' CLAUDE.md)",
+      "Bash(sed -i 's/roomsvr:                # new backend\\\\n      forward: \\\\[7, 8, 9\\\\]\\\\n      route_key: connId/roomsvr:\\\\n      forward: [7, 8, 9]\\\\n      route_key: roomId\\\\n      route_type: hash/' CLAUDE.md)"
     ]
   }
 }

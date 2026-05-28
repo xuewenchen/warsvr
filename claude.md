@@ -83,8 +83,8 @@ gateway:
   routes:
     chatsvr:
       forward: [4]          # client→backend msgIDs
-      response: [6]         # backend→client msgIDs
-      route_key: playerId   # "connId" or "playerId"
+      route_key: playerId   # "connId", "playerId", or custom property
+      route_type: hash      # "hash" (default) or "random"
 ```
 
 **Adding a new backend** (e.g. RoomSvr):
@@ -93,12 +93,11 @@ gateway:
   routes:
     chatsvr:
       forward: [4]
-      response: [6]
       route_key: playerId
-    roomsvr:                # new backend
+    roomsvr:
       forward: [7, 8, 9]
-      response: [10, 11]
-      route_key: connId
+      route_key: roomId     # custom property for stateful routing
+      route_type: hash
 ```
 Plus add `roomsvr` to `services` section. No Go code changes needed.
 
@@ -125,13 +124,13 @@ conn := reg.RouteTo("chatsvr", key)
 
 For services with extra state (e.g., Gateway), embed `*pkg.Registry` in a wrapper struct. `Dial` and `RouteTo` are promoted automatically.
 
-**`pkg.Dial(service, routers, routeFn) *Pool`**: Connects to all configured instances of a backend and returns a Pool. Reads config, creates TCP clients, wires reconnection callbacks, blocks until all connections are established.
+**`pkg.Dial(service, routers, routeFn, registerMsgID) *Pool`**: Connects to all configured instances of a backend. Waits up to 3s for connections, then proceeds regardless — failed instances auto-reconnect in background.
 
 **`pkg.Pool`**: Generic connection pool with:
 - Thread-safe connection management with `HealthyConns()`
-- Automatic reconnection with exponential backoff (1s → 2s → … → 30s)
-- Pluggable routing via `RouteFunc` (`HashRoute`, `RandomRoute`, or custom)
-- 15s connection timeout (cancels via `client.Stop()`)
+- Automatic reconnection with exponential backoff (200ms → … → 5s), rate-limited logging
+- Pluggable routing via `RouteFunc` (`HashRoute`, `RandomRoute`, or custom). Use `pkg.RouteFuncFor(type)` to select by config.
+- `Sync()` for hot-reload: adds new servers, removes deleted ones atomically
 
 **`pkg.BackendPool`**: Interface with `Route(key string) ziface.IConnection`. `Pool` implements this.
 
@@ -157,8 +156,8 @@ gateway:            # GatewayConfig
   routes:           # map of backend → BackendRoute
     chatsvr:
       forward: [4]
-      response: [6]
       route_key: playerId
+      route_type: hash   # "hash" (default) or "random"
 ```
 
 `conf.LookupServer(servers, id, name)` selects a server by ID or falls back to the first entry. Gateway uses `Mode: "tcp,ws"` to start both TCP and WebSocket listeners.

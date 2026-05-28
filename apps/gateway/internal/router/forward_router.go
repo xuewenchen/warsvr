@@ -74,11 +74,13 @@ func (r *ForwardRouter) sendError(request ziface.IRequest, reqMsgID uint32) {
 }
 
 func (r *ForwardRouter) resolveRouteKey(conn ziface.IConnection, route *BackendRouteInfo) string {
-	if route.RouteKey == "playerId" {
-		if pid, err := conn.GetProperty("playerId"); err == nil {
-			return strconv.FormatInt(pid.(int64), 10)
-		}
+	key := route.RouteKey
+	if key == "" || key == "connId" {
+		return fmt.Sprintf("%d", conn.GetConnID())
 	}
-	// Fall back to connId when playerId is not yet set (e.g., login message)
+	// Try the named property: playerId, roomId, or any custom key
+	if val, err := conn.GetProperty(key); err == nil {
+		return fmt.Sprintf("%v", val)
+	}
 	return fmt.Sprintf("%d", conn.GetConnID())
 }

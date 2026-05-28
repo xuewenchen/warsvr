@@ -27,6 +27,15 @@ type BackendRouterConfig struct {
 // RouteFunc is a pluggable routing strategy. Receives the routing key and healthy connections.
 type RouteFunc func(key string, healthy []ziface.IConnection) ziface.IConnection
 
+// RouteFuncFor returns the RouteFunc for the given type string.
+// Supported types: "hash" (default), "random".
+func RouteFuncFor(routeType string) RouteFunc {
+	if routeType == "random" {
+		return RandomRoute
+	}
+	return HashRoute
+}
+
 // HashRoute picks a connection by hashing the key.
 func HashRoute(key string, healthy []ziface.IConnection) ziface.IConnection {
 	if len(healthy) == 0 {
@@ -51,13 +60,13 @@ type connEntry struct {
 	routers       []BackendRouterConfig
 	registerMsgID uint32
 
-	mu             sync.Mutex
-	conn           ziface.IConnection
-	healthy        bool
-	stopped        bool // true = removed from pool, reconnect stops
-	backoff        time.Duration
-	reconnecting   bool
-	failLogged     bool // only log first reconnect failure
+	mu           sync.Mutex
+	conn         ziface.IConnection
+	healthy      bool
+	stopped      bool // true = removed from pool, reconnect stops
+	backoff      time.Duration
+	reconnecting bool
+	failLogged   bool // only log first reconnect failure
 }
 
 // Pool manages a set of backend connections with automatic reconnection.

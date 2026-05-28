@@ -10,8 +10,9 @@ import (
 
 // BackendRouteInfo holds routing information for a single message ID.
 type BackendRouteInfo struct {
-	Backend  string // backend service name (e.g. "chatsvr")
-	RouteKey string // "connId" or "playerId"
+	Backend   string // backend service name (e.g. "chatsvr")
+	RouteKey  string // "connId", "playerId", or custom property name
+	RouteType string // "hash" (default) or "random" — passed to pkg.Dial
 }
 
 // GatewayRef holds Gateway-specific state. Embeds Registry for backend connection management.
@@ -43,7 +44,7 @@ func BuildRouteIndex(cfg conf.GatewayConfig) map[uint32]*BackendRouteInfo {
 	routes := make(map[uint32]*BackendRouteInfo)
 	for backend, rc := range cfg.Routes {
 		for _, msgID := range rc.Forward {
-			routes[msgID] = &BackendRouteInfo{Backend: backend, RouteKey: rc.RouteKey}
+			routes[msgID] = &BackendRouteInfo{Backend: backend, RouteKey: rc.RouteKey, RouteType: rc.RouteType}
 		}
 	}
 	return routes
