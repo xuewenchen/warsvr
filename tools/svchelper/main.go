@@ -222,20 +222,21 @@ func startOne(svc, id string, port int, configPath string) {
 		os.Exit(1)
 	}
 
-	// Wait and verify port
-	time.Sleep(2 * time.Second)
-	if portOccupied(port) {
-		fmt.Printf("  OK (pid:%d, port:%d, log:%s)\n", cmd.Process.Pid, port, logPath)
-		// Save PID for stop
-		pidDir := "bin/.pids"
-		os.MkdirAll(pidDir, 0755)
-		os.WriteFile(pidDir+"/"+svc+".pid", []byte(strconv.Itoa(cmd.Process.Pid)), 0644)
-	} else {
-		fmt.Printf("  FAILED - port %d not listening. Tail log:\n", port)
-		cmd.Process.Kill()
-		printLogTail(logPath)
-		os.Exit(1)
+	// Poll port until listening (Dial may wait for downstream connections)
+	for i := 0; i < 20; i++ {
+		time.Sleep(400 * time.Millisecond)
+		if portOccupied(port) {
+			fmt.Printf("  OK (pid:%d, port:%d, log:%s)\n", cmd.Process.Pid, port, logPath)
+			pidDir := "bin/.pids"
+			os.MkdirAll(pidDir, 0755)
+			os.WriteFile(pidDir+"/"+svc+".pid", []byte(strconv.Itoa(cmd.Process.Pid)), 0644)
+			return
+		}
 	}
+	fmt.Printf("  FAILED - port %d not listening after 8s. Tail log:\n", port)
+	cmd.Process.Kill()
+	printLogTail(logPath)
+	os.Exit(1)
 }
 
 func doStop(target string) {

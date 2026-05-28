@@ -51,12 +51,13 @@ type connEntry struct {
 	routers       []BackendRouterConfig
 	registerMsgID uint32
 
-	mu           sync.Mutex
-	conn         ziface.IConnection
-	healthy      bool
-	stopped      bool // true = removed from pool, reconnect stops
-	backoff      time.Duration
-	reconnecting bool
+	mu             sync.Mutex
+	conn           ziface.IConnection
+	healthy        bool
+	stopped        bool // true = removed from pool, reconnect stops
+	backoff        time.Duration
+	reconnecting   bool
+	failLogged     bool // only log first reconnect failure
 }
 
 // Pool manages a set of backend connections with automatic reconnection.
@@ -136,7 +137,21 @@ func Dial(service string, routers []BackendRouterConfig, routeFn RouteFunc, regi
 		client.Start()
 	}
 
-	wg.Wait()
+	// Wait up to dialTimeout for connections, then proceed (reconnect handles the rest)
+	done := make(chan struct{})
+	go func() { wg.Wait(); close(done) }()
+	select {
+	case <-done:
+	case <-time.After(dialTimeout):
+		healthy := len(pool.HealthyConns())
+		zlog.Ins().InfoF("Dial: %s proceeding with %d/%d connections", service, healthy, len(servers))
+		// Start reconnect loops for entries that never connected
+		for i, e := range pool.conns {
+			if !e.healthy && !e.stopped && !e.reconnecting {
+				pool.OnDisconnect(i)
+			}
+		}
+	}
 	return pool
 }
 
@@ -297,6 +312,7 @@ func (p *Pool) OnDisconnect(idx int) {
 }
 
 const (
+	dialTimeout          = 3 * time.Second
 	reconnectTimeout     = 5 * time.Second
 	reconnectMaxBackoff  = 5 * time.Second
 	reconnectInitBackoff = 200 * time.Millisecond
@@ -350,6 +366,7 @@ func (p *Pool) reconnectLoop(idx int) {
 				e.healthy = true
 				e.backoff = reconnectInitBackoff
 				e.reconnecting = false
+				e.failLogged = false
 				e.mu.Unlock()
 				return
 			}
@@ -361,6 +378,10 @@ func (p *Pool) reconnectLoop(idx int) {
 		if e.stopped {
 			e.mu.Unlock()
 			return
+		}
+		if !e.failLogged {
+			zlog.Ins().ErrorF("Pool: reconnect failed to %s, retrying (backoff: %v)", e.addr, e.backoff)
+			e.failLogged = true
 		}
 		if e.backoff < reconnectMaxBackoff {
 			e.backoff *= 2
