@@ -27,6 +27,7 @@ const (
 	MsgIdRoomLeaveResp = uint32(pb.MsgID_ROOM_LEAVE_RESP)
 
 	MsgIdRoomDestroyedPush = uint32(pb.MsgID_ROOM_DESTROYED_PUSH)
+	MsgIdRoomEventPush    = uint32(pb.MsgID_ROOM_EVENT_PUSH)
 )
 
 const (

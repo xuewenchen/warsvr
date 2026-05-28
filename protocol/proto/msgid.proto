@@ -33,4 +33,5 @@ enum MsgID {
   ROOM_LEAVE_RESP = 17;
 
   ROOM_DESTROYED_PUSH = 22; // RoomSvr → MatchSvr (internal)
+  ROOM_EVENT_PUSH = 23;     // RoomSvr → Client (joined/left broadcast)
 }

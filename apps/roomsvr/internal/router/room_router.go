@@ -12,7 +12,13 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-var rooms sync.Map // matchId → []int64 (player IDs)
+var rooms sync.Map // matchId → []roomPlayer
+
+type roomPlayer struct {
+	playerID string
+	conn     ziface.IConnection
+	senderID uint64
+}
 
 type RoomRouter struct {
 	znet.BaseRouter
@@ -43,22 +49,30 @@ func (r *RoomRouter) handleJoin(env *pb.Envelope, conn ziface.IConnection) {
 		return
 	}
 
-	senderPID := env.ConnTags["player_id"]
+	zlog.Ins().InfoF("handleJoin %s", req.String())
 
-	// Auto-create room if first player
-	actual, _ := rooms.LoadOrStore(req.MatchId, []string{})
-	players := actual.([]string)
+	playerID := env.ConnTags["player_id"]
+	rp := roomPlayer{playerID: playerID, conn: conn, senderID: env.ConnId}
+
+	raw, _ := rooms.LoadOrStore(req.MatchId, []roomPlayer{})
+	players := raw.([]roomPlayer)
 	for _, p := range players {
-		if p == senderPID {
+		if p.playerID == playerID {
 			r.sendJoinResp(conn, env.ConnId, req.MatchId, false, "already in room")
 			return
 		}
 	}
-	players = append(players, senderPID)
+	players = append(players, rp)
 	rooms.Store(req.MatchId, players)
 
 	r.sendJoinResp(conn, env.ConnId, req.MatchId, true, "")
-	zlog.Ins().InfoF("RoomSvr: player %s joined room %s (%d players)", senderPID, req.MatchId, len(players))
+
+	// Broadcast to existing members
+	if len(players) > 1 {
+		r.broadcastRoomEvent(req.MatchId, players[:len(players)-1], playerID, "joined", len(players))
+	}
+
+	zlog.Ins().InfoF("RoomSvr: %s joined %s (%d players)", playerID, req.MatchId, len(players))
 }
 
 func (r *RoomRouter) handleLeave(env *pb.Envelope, conn ziface.IConnection) {
@@ -67,30 +81,41 @@ func (r *RoomRouter) handleLeave(env *pb.Envelope, conn ziface.IConnection) {
 		return
 	}
 
-	senderPID := env.ConnTags["player_id"]
+	zlog.Ins().InfoF("handleLeave %s", req.String())
+
+	playerID := env.ConnTags["player_id"]
 
 	v, ok := rooms.Load(req.MatchId)
 	if !ok {
 		return
 	}
-	players := v.([]string)
+	players := v.([]roomPlayer)
+	idx := -1
 	for i, p := range players {
-		if p == senderPID {
-			players = append(players[:i], players[i+1:]...)
+		if p.playerID == playerID {
+			idx = i
 			break
 		}
 	}
+	if idx < 0 {
+		return
+	}
+	leftPlayer := players[idx]
+	players = append(players[:idx], players[idx+1:]...)
+
 	if len(players) == 0 {
 		rooms.Delete(req.MatchId)
 		r.notifyMatchSvr(req.MatchId)
 		zlog.Ins().InfoF("RoomSvr: room %s destroyed (empty)", req.MatchId)
 	} else {
 		rooms.Store(req.MatchId, players)
-		zlog.Ins().InfoF("RoomSvr: player %s left room %s (%d players)", senderPID, req.MatchId, len(players))
+		// Broadcast to remaining members
+		r.broadcastRoomEvent(req.MatchId, players, playerID, "left", len(players))
+		zlog.Ins().InfoF("RoomSvr: %s left %s (%d players)", playerID, req.MatchId, len(players))
 	}
 
 	resp, _ := proto.Marshal(&pb.RoomLeaveResp{Success: true})
-	envResp, _ := proto.Marshal(&pb.Envelope{ConnId: env.ConnId, Data: resp})
+	envResp, _ := proto.Marshal(&pb.Envelope{ConnId: leftPlayer.senderID, Data: resp})
 	conn.SendMsg(protocol.MsgIdRoomLeaveResp, envResp)
 }
 
@@ -118,4 +143,16 @@ func (r *RoomRouter) notifyMatchSvr(matchID string) {
 	env, _ := proto.Marshal(&pb.Envelope{Data: push})
 	conn.SendMsg(protocol.MsgIdRoomDestroyedPush, env)
 	zlog.Ins().InfoF("RoomSvr: notified MatchSvr of destroyed room %s", matchID)
+}
+
+func (r *RoomRouter) broadcastRoomEvent(matchId string, members []roomPlayer, playerID, event string, count int) {
+	push, _ := proto.Marshal(&pb.RoomEventPush{
+		MatchId:     matchId,
+		PlayerId:    playerID,
+		Event:       event,
+		PlayerCount: int64(count),
+	})
+	for _, p := range members {
+		r.BC.ToConn(protocol.MsgIdRoomEventPush, p.senderID, push, p.conn)
+	}
 }

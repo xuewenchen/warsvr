@@ -47,6 +47,7 @@ const (
 	MsgID_ROOM_LEAVE_REQ      MsgID = 16
 	MsgID_ROOM_LEAVE_RESP     MsgID = 17
 	MsgID_ROOM_DESTROYED_PUSH MsgID = 22 // RoomSvr → MatchSvr (internal)
+	MsgID_ROOM_EVENT_PUSH     MsgID = 23 // RoomSvr → Client (joined/left broadcast)
 )
 
 // Enum value maps for MsgID.
@@ -70,6 +71,7 @@ var (
 		16:   "ROOM_LEAVE_REQ",
 		17:   "ROOM_LEAVE_RESP",
 		22:   "ROOM_DESTROYED_PUSH",
+		23:   "ROOM_EVENT_PUSH",
 	}
 	MsgID_value = map[string]int32{
 		"MSG_ID_UNSPECIFIED":  0,
@@ -90,6 +92,7 @@ var (
 		"ROOM_LEAVE_REQ":      16,
 		"ROOM_LEAVE_RESP":     17,
 		"ROOM_DESTROYED_PUSH": 22,
+		"ROOM_EVENT_PUSH":     23,
 	}
 )
 
@@ -124,7 +127,7 @@ var File_msgid_proto protoreflect.FileDescriptor
 
 const file_msgid_proto_rawDesc = "" +
 	"\n" +
-	"\vmsgid.proto\x12\x02pb*\xee\x02\n" +
+	"\vmsgid.proto\x12\x02pb*\x83\x03\n" +
 	"\x05MsgID\x12\x16\n" +
 	"\x12MSG_ID_UNSPECIFIED\x10\x00\x12\b\n" +
 	"\x04PING\x10\x01\x12\b\n" +
@@ -143,7 +146,8 @@ const file_msgid_proto_rawDesc = "" +
 	"\x0eROOM_JOIN_RESP\x10\x0f\x12\x12\n" +
 	"\x0eROOM_LEAVE_REQ\x10\x10\x12\x13\n" +
 	"\x0fROOM_LEAVE_RESP\x10\x11\x12\x17\n" +
-	"\x13ROOM_DESTROYED_PUSH\x10\x16B\x15Z\x13cardwar/protocol/pbb\x06proto3"
+	"\x13ROOM_DESTROYED_PUSH\x10\x16\x12\x13\n" +
+	"\x0fROOM_EVENT_PUSH\x10\x17B\x15Z\x13cardwar/protocol/pbb\x06proto3"
 
 var (
 	file_msgid_proto_rawDescOnce sync.Once

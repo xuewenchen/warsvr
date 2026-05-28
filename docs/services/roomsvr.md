@@ -22,7 +22,7 @@ apps/roomsvr/internal/router/
 
 | 依赖 | 用途 |
 |---|---|
-| `pkg/broadcast` | Broadcaster（预留，房间内广播） |
+| `pkg/broadcast` | Broadcaster：玩家进/出时广播给房间其他人 |
 | `protocol` | msgID 常量 |
 | `protocol/pb` | RoomJoinReq/Resp, RoomLeaveReq/Resp, Envelope |
 
@@ -35,7 +35,7 @@ apps/roomsvr/internal/router/
 | 依赖 | 用途 |
 |---|---|
 | `pkg/registry` | Dial MatchSvr，房间销毁时发送通知 |
-| `pkg/broadcast` | Broadcaster（预留，房间内广播） |
+| `pkg/broadcast` | Broadcaster：玩家进/出时广播给房间其他人 |
 | `protocol` | msgID 常量 |
 | `protocol/pb` | RoomJoinReq/Resp, RoomLeaveReq/Resp, RoomDestroyedPush, Envelope |
 
