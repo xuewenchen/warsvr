@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CardWar Chat Test</title>
+<script src="https://cdn.jsdelivr.net/npm/protobufjs@7/dist/protobuf.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', monospace; background: #1a1a2e; color: #eee; padding: 16px; }
+  .toolbar { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
+  .toolbar label { font-size: 13px; color: #aaa; }
+  .toolbar input, .toolbar button { padding: 6px 12px; border-radius: 4px; border: 1px solid #444; background: #16213e; color: #eee; font-size: 13px; }
+  .toolbar button { cursor: pointer; background: #0f3460; border-color: #0f3460; }
+  .toolbar button:hover { background: #1a5276; }
+  .toolbar button.danger { background: #8b0000; border-color: #8b0000; }
+  .toolbar button.danger:hover { background: #a00000; }
+  .panels { display: flex; gap: 12px; height: calc(100vh - 140px); }
+  .panel { flex: 1; display: flex; flex-direction: column; border: 1px solid #333; border-radius: 6px; overflow: hidden; }
+  .panel h3 { padding: 10px 14px; background: #16213e; font-size: 14px; border-bottom: 1px solid #333; }
+  .panel h3 span { font-weight: normal; font-size: 12px; color: #4f8; margin-left: 8px; }
+  .panel h3 span.off { color: #f66; }
+  .log { flex: 1; overflow-y: auto; padding: 10px; font-size: 13px; background: #0a0a18; }
+  .log .msg { padding: 3px 0; border-bottom: 1px solid #111; }
+  .log .global { color: #7ec8e3; }
+  .log .private { color: #f9ca24; }
+  .log .error { color: #f66; }
+  .log .confirm { color: #666; }
+  .log .time { color: #555; font-size: 11px; margin-right: 6px; }
+  .input-bar { display: flex; gap: 6px; padding: 8px 10px; background: #16213e; border-top: 1px solid #333; }
+  .input-bar input { flex: 1; padding: 8px; border-radius: 4px; border: 1px solid #444; background: #0a0a18; color: #eee; font-size: 13px; }
+  .input-bar input.target { width: 80px; flex: none; }
+  .input-bar button { padding: 8px 14px; border-radius: 4px; cursor: pointer; background: #0f3460; border: 1px solid #0f3460; color: #eee; font-size: 12px; }
+  .input-bar button:hover:not(:disabled) { background: #1a5276; }
+  .input-bar button:disabled { opacity: 0.3; cursor: not-allowed; }
+  .status { font-size: 11px; color: #666; padding: 4px 14px; background: #111; display:flex; gap:8px; align-items:center; }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <label>JWT Secret:</label>
+  <input id="secret" value="change-me-in-production" size="28" placeholder="JWT secret">
+  <label>Gateway:</label>
+  <input id="host" value="127.0.0.1:9000" size="14" placeholder="host:port">
+  <button id="btnConnect" onclick="connectBoth()">Connect Both</button>
+  <button class="danger" onclick="disconnectBoth()">Disconnect All</button>
+  <span id="protoStatus" style="color:#f66;font-size:12px">loading protobuf...</span>
+</div>
+
+<div class="panels">
+  <!-- Player 1 -->
+  <div class="panel">
+    <h3>Player 1 <span id="status1" class="off">offline</span></h3>
+    <div class="status">
+      ID:<input id="pid1" value="1" size="6" style="background:#0a0a18;border:1px solid #444;color:#eee;padding:2px 4px;">
+      Target:<input id="target1" value="2" size="6" style="background:#0a0a18;border:1px solid #444;color:#eee;padding:2px 4px;">
+    </div>
+    <div class="log" id="log1"></div>
+    <div class="input-bar">
+      <input id="msg1" placeholder="Message..." onkeydown="if(event.key==='Enter') sendMsg(1)">
+      <button id="btnGlobal1" onclick="sendMsg(1,false)" disabled>Global</button>
+      <button id="btnPrivate1" onclick="sendMsg(1,true)" disabled>Private</button>
+    </div>
+  </div>
+  <!-- Player 2 -->
+  <div class="panel">
+    <h3>Player 2 <span id="status2" class="off">offline</span></h3>
+    <div class="status">
+      ID:<input id="pid2" value="2" size="6" style="background:#0a0a18;border:1px solid #444;color:#eee;padding:2px 4px;">
+      Target:<input id="target2" value="1" size="6" style="background:#0a0a18;border:1px solid #444;color:#eee;padding:2px 4px;">
+    </div>
+    <div class="log" id="log2"></div>
+    <div class="input-bar">
+      <input id="msg2" placeholder="Message..." onkeydown="if(event.key==='Enter') sendMsg(2)">
+      <button id="btnGlobal2" onclick="sendMsg(2,false)" disabled>Global</button>
+      <button id="btnPrivate2" onclick="sendMsg(2,true)" disabled>Private</button>
+    </div>
+  </div>
+</div>
+
+<script>
+window.onerror = function(msg, url, line) {
+  log(1, 'JS ERROR: ' + msg + ' line ' + line, 'error');
+  log(2, 'JS ERROR: ' + msg + ' line ' + line, 'error');
+};
+
+const clients = { 1: null, 2: null };
+var ChatReq = null, ChatResp = null;
+
+// ---- protobuf ----
+try {
+  var root = protobuf.parse(`
+    syntax = "proto3"; package pb;
+    message ChatReq { string content = 1; int64 target_player_id = 2; }
+    message ChatResp { int64 sender_player_id = 1; string content = 2; int64 timestamp = 3; int64 target_player_id = 4; }
+  `).root;
+  ChatReq = root.lookupType('pb.ChatReq');
+  ChatResp = root.lookupType('pb.ChatResp');
+  document.getElementById('protoStatus').style.color = '#4f8';
+  document.getElementById('protoStatus').textContent = 'protobuf ready';
+  enableSendButtons();
+} catch(err) {
+  document.getElementById('protoStatus').textContent = 'protobuf failed: ' + err;
+}
+
+function enableSendButtons() {
+  ['btnGlobal1','btnPrivate1','btnGlobal2','btnPrivate2'].forEach(id => {
+    var b = document.getElementById(id);
+    if (b) b.disabled = false;
+  });
+}
+
+// ---- JWT ----
+async function generateJWT(playerId) {
+  var secret = document.getElementById('secret').value;
+  var enc = new TextEncoder();
+  var header = btoaUrl(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+  var payload = btoaUrl(JSON.stringify({ playerId: Number(playerId), iat: Math.floor(Date.now()/1000) }));
+  var key = await crypto.subtle.importKey('raw', enc.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  var sig = await crypto.subtle.sign('HMAC', key, enc.encode(header + '.' + payload));
+  return header + '.' + payload + '.' + btoaUrl(new Uint8Array(sig));
+}
+function btoaUrl(data) {
+  if (data instanceof Uint8Array) data = String.fromCharCode.apply(null, data);
+  return btoa(data).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+}
+
+// ---- Zinx DataPack (BigEndian: [msgID][dataLen][body]) ----
+function packFrame(msgId, body) {
+  var buf = new ArrayBuffer(8 + body.length);
+  var v = new DataView(buf);
+  v.setUint32(0, msgId, false);
+  v.setUint32(4, body.length, false);
+  new Uint8Array(buf, 8).set(body);
+  return buf;
+}
+function unpackFrame(data) {
+  if (data.byteLength < 8) return null;
+  var v = new DataView(data);
+  var msgId = v.getUint32(0, false);
+  var len = v.getUint32(4, false);
+  if (8 + len > data.byteLength) return null;
+  return { msgId: msgId, body: new Uint8Array(data, 8, len) };
+}
+
+// ---- connect ----
+async function connectPlayer(n) {
+  var pid = document.getElementById('pid'+n).value;
+  var host = document.getElementById('host').value;
+  log(n, 'Generating JWT for player '+pid+'...', 'confirm');
+  var token = await generateJWT(pid);
+  var ws = new WebSocket('ws://'+host+'/ws?token='+encodeURIComponent(token));
+  ws.binaryType = 'arraybuffer';
+
+  return new Promise(function(resolve, reject) {
+    ws.onopen = function() {
+      setStatus(n, true);
+      log(n, 'Connected as Player '+pid, 'confirm');
+      if (ChatReq) enableSendButtons();
+      resolve(ws);
+    };
+    ws.onerror = function(e) { setStatus(n, false); log(n, 'WS error', 'error'); };
+    ws.onmessage = function(e) {
+      var frame = unpackFrame(e.data);
+      if (!frame) return;
+      handleMessage(n, frame.msgId, frame.body);
+    };
+    ws.onclose = function() { setStatus(n, false); log(n, 'Disconnected', 'error'); };
+    setTimeout(function() { reject(new Error('timeout')); }, 5000);
+  });
+}
+
+function setStatus(n, on) {
+  var el = document.getElementById('status'+n);
+  el.textContent = on ? 'online' : 'offline';
+  el.className = on ? '' : 'off';
+}
+
+async function connectBoth() {
+  document.getElementById('btnConnect').disabled = true;
+  for (var n = 1; n <= 2; n++) {
+    if (clients[n]) { clients[n].close(); clients[n] = null; }
+    try {
+      clients[n] = await connectPlayer(n);
+    } catch(e) {
+      log(n, 'Connect failed: '+e.message, 'error');
+    }
+  }
+  document.getElementById('btnConnect').disabled = false;
+}
+function disconnectBoth() {
+  for (var n = 1; n <= 2; n++) {
+    if (clients[n]) { clients[n].close(); clients[n] = null; }
+    setStatus(n, false);
+    log(n, 'Disconnected', 'error');
+  }
+}
+
+// ---- send ----
+function sendMsg(n, isPrivate) {
+  var ws = clients[n];
+  if (!ws || ws.readyState !== WebSocket.OPEN) { log(n, 'Not connected', 'error'); return; }
+  if (!ChatReq) { log(n, 'Protobuf not loaded yet', 'error'); return; }
+
+  var input = document.getElementById('msg'+n);
+  var content = input.value.trim();
+  if (!content) return;
+
+  var target = isPrivate ? Number(document.getElementById('target'+n).value) : 0;
+  var payload = { content: content, targetPlayerId: target };
+  var body = ChatReq.encode(ChatReq.create(payload)).finish();
+
+  console.log('Sending player', n, 'msgId=5 bodyLen='+body.length, payload);
+  ws.send(packFrame(5, body));
+
+  var label = isPrivate ? '[Private->'+target+']' : '[Global]';
+  log(n, '<b>SENT</b> '+label+' '+content, 'confirm');
+  input.value = '';
+}
+
+// ---- receive ----
+function handleMessage(n, msgId, body) {
+  console.log('Player', n, 'received msgId='+msgId, 'bodyLen='+body.length);
+  if (msgId === 6) {
+    try {
+      var msg = ChatResp.decode(body);
+      var cls = msg.senderPlayerId === -1 ? 'error' : msg.targetPlayerId ? 'private' : 'global';
+      var label;
+      if (msg.senderPlayerId === -1) label = '[ERR]';
+      else if (msg.targetPlayerId) label = '[Private '+msg.senderPlayerId+'->'+msg.targetPlayerId+']';
+      else label = '[Global '+msg.senderPlayerId+']';
+      log(n, label+' '+msg.content, cls);
+    } catch(e) {
+      log(n, 'Parse error: '+e, 'error');
+    }
+  } else if (msgId === 2) {
+    log(n, 'Pong', 'confirm');
+  } else {
+    log(n, 'Unknown msgId='+msgId, 'error');
+  }
+}
+
+function log(n, txt, cls) {
+  var el = document.getElementById('log'+n);
+  if (!el) return;
+  var t = new Date().toLocaleTimeString();
+  var div = document.createElement('div');
+  div.className = 'msg ' + (cls||'');
+  div.innerHTML = '<span class="time">'+t+'</span>'+txt;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
