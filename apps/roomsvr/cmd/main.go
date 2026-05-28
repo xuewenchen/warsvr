@@ -23,6 +23,10 @@ func main() {
 	cfg := conf.LookupServer(conf.GlobalConfig.Services["roomsvr"], *svrID, "RoomSvr")
 	host, port := conf.ParseHostPort(cfg.Listen)
 
+	// Dial MatchSvr for room-destroyed notifications
+	reg := pkg.NewRegistry()
+	reg.Dial("matchsvr", nil, pkg.HashRoute, protocol.MsgIdGatewayRegister)
+
 	s := znet.NewUserConfServer(&zconf.Config{
 		Name:    "RoomSvr",
 		Host:    host,
@@ -30,10 +34,11 @@ func main() {
 		Mode:    zconf.ServerModeTcp,
 	})
 
+	rr := &router.RoomRouter{BC: pkg.NewGateWayBroadcaster(s), Reg: reg}
 	s.AddRouter(protocol.MsgIdPing, &router.PingRouter{})
 	s.AddRouter(protocol.MsgIdGatewayRegister, &router.GatewayRegisterRouter{})
-	s.AddRouter(protocol.MsgIdRoomJoinReq, &router.RoomRouter{BC: pkg.NewBroadcaster(s)})
-	s.AddRouter(protocol.MsgIdRoomLeaveReq, &router.RoomRouter{BC: pkg.NewBroadcaster(s)})
+	s.AddRouter(protocol.MsgIdRoomJoinReq, rr)
+	s.AddRouter(protocol.MsgIdRoomLeaveReq, rr)
 
 	s.Serve()
 }

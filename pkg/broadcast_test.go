@@ -75,7 +75,7 @@ func TestBroadcaster_ToAll(t *testing.T) {
 
 	ch := make(chan receivedMsg, 100)
 	connectGateway(t, port, ch)
-	bc := NewBroadcaster(srv)
+	bc := NewGateWayBroadcaster(srv)
 
 	payload := []byte("hello broadcast")
 	bc.ToAll(protocol.MsgIdChatResp, payload)
@@ -105,7 +105,7 @@ func TestBroadcaster_ToPlayer(t *testing.T) {
 
 	ch := make(chan receivedMsg, 100)
 	connectGateway(t, port, ch)
-	bc := NewBroadcaster(srv)
+	bc := NewGateWayBroadcaster(srv)
 
 	payload := []byte("private msg")
 	bc.ToPlayer(protocol.MsgIdChatResp, 42, payload)
@@ -137,7 +137,7 @@ func TestBroadcaster_ToConn(t *testing.T) {
 	ch := make(chan receivedMsg, 100)
 	connectGateway(t, port, ch)
 	time.Sleep(200 * time.Millisecond) // let server register the connection
-	bc := NewBroadcaster(srv)
+	bc := NewGateWayBroadcaster(srv)
 
 	// Get the server-side connection from ConnMgr (this is what Broadcaster uses)
 	var serverConn ziface.IConnection
@@ -182,7 +182,7 @@ func TestBroadcaster_NonGatewayIgnored(t *testing.T) {
 	}
 	defer nonGWConn.Stop()
 
-	bc := NewBroadcaster(srv)
+	bc := NewGateWayBroadcaster(srv)
 	// Should not panic or send to non-gateway connections
 	bc.ToAll(protocol.MsgIdChatResp, []byte("should-not-receive"))
 	time.Sleep(200 * time.Millisecond)
@@ -206,7 +206,7 @@ func TestBroadcaster_MultipleGateways(t *testing.T) {
 	wg.Wait()
 	time.Sleep(200 * time.Millisecond) // let server process all registrations
 
-	bc := NewBroadcaster(srv)
+	bc := NewGateWayBroadcaster(srv)
 	bc.ToAll(protocol.MsgIdChatResp, []byte("multi-gw"))
 
 	received := 0
@@ -228,7 +228,7 @@ func BenchmarkBroadcastTo_1Gateway(b *testing.B) {
 
 	ch := make(chan receivedMsg, 1000)
 	connectGatewayB(b, port, ch)
-	bc := NewBroadcaster(srv)
+	bc := NewGateWayBroadcaster(srv)
 	payload := []byte("benchmark")
 
 	b.ReportAllocs()
@@ -248,7 +248,7 @@ func BenchmarkBroadcastTo_10Gateways(b *testing.B) {
 	for i := 0; i < 10; i++ {
 		connectGatewayB(b, port, ch)
 	}
-	bc := NewBroadcaster(srv)
+	bc := NewGateWayBroadcaster(srv)
 	payload := []byte("benchmark")
 
 	b.ReportAllocs()

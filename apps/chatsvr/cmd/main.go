@@ -33,7 +33,7 @@ func main() {
 
 	s.AddRouter(protocol.MsgIdPing, &router.PingRouter{})
 	s.AddRouter(protocol.MsgIdGatewayRegister, &router.GatewayRegisterRouter{}) // 设置gateway注册类型
-	s.AddRouter(protocol.MsgIdChatReq, &router.ChatRouter{BC: pkg.NewBroadcaster(s)})
+	s.AddRouter(protocol.MsgIdChatReq, &router.ChatRouter{BC: pkg.NewGateWayBroadcaster(s)})
 
 	s.Serve()
 }

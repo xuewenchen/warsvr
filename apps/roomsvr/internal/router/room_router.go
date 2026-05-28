@@ -17,7 +17,7 @@ var rooms sync.Map // matchId → []int64 (player IDs)
 type RoomRouter struct {
 	znet.BaseRouter
 	BC  pkg.Broadcaster
-	Srv ziface.IServer
+	Reg *pkg.Registry
 }
 
 func (r *RoomRouter) Handle(request ziface.IRequest) {
@@ -82,6 +82,7 @@ func (r *RoomRouter) handleLeave(env *pb.Envelope, conn ziface.IConnection) {
 	}
 	if len(players) == 0 {
 		rooms.Delete(req.MatchId)
+		r.notifyMatchSvr(req.MatchId)
 		zlog.Ins().InfoF("RoomSvr: room %s destroyed (empty)", req.MatchId)
 	} else {
 		rooms.Store(req.MatchId, players)
@@ -102,4 +103,19 @@ func (r *RoomRouter) sendJoinResp(conn ziface.IConnection, senderID uint64, matc
 	data, _ := proto.Marshal(resp)
 	env, _ := proto.Marshal(&pb.Envelope{ConnId: senderID, Data: data})
 	conn.SendMsg(protocol.MsgIdRoomJoinResp, env)
+}
+
+func (r *RoomRouter) notifyMatchSvr(matchID string) {
+	if r.Reg == nil {
+		return
+	}
+	conn := r.Reg.RouteTo("matchsvr", matchID)
+	if conn == nil {
+		zlog.Ins().ErrorF("RoomSvr: no matchsvr connection for destroy notification")
+		return
+	}
+	push, _ := proto.Marshal(&pb.RoomDestroyedPush{MatchId: matchID})
+	env, _ := proto.Marshal(&pb.Envelope{Data: push})
+	conn.SendMsg(protocol.MsgIdRoomDestroyedPush, env)
+	zlog.Ins().InfoF("RoomSvr: notified MatchSvr of destroyed room %s", matchID)
 }

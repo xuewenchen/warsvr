@@ -56,6 +56,8 @@ func (r *MatchRouter) Handle(request ziface.IRequest) {
 		r.handleAllocate(&env, request.GetConnection())
 	case protocol.MsgIdMatchQueryReq:
 		r.handleQuery(&env, request.GetConnection())
+	case protocol.MsgIdRoomDestroyedPush:
+		r.handleDestroyed(&env)
 	}
 }
 
@@ -239,5 +241,31 @@ func requiredPlayers(matchType string) int {
 		return 10
 	default:
 		return 2
+	}
+}
+
+func (r *MatchRouter) handleDestroyed(env *pb.Envelope) {
+	var push pb.RoomDestroyedPush
+	if err := proto.Unmarshal(env.Data, &push); err != nil {
+		zlog.Error(err)
+		return
+	}
+	v, ok := activeMatches.LoadAndDelete(push.MatchId)
+	if !ok {
+		return
+	}
+	dir := v.(*matchDir)
+	decLoad(dir.ServerID)
+	zlog.Ins().InfoF("MatchSvr: cleaned up match %s from %s", push.MatchId, dir.ServerID)
+}
+
+func decLoad(serverID string) {
+	if v, ok := loadCounts.Load(serverID); ok {
+		count := v.(int) - 1
+		if count <= 0 {
+			loadCounts.Delete(serverID)
+		} else {
+			loadCounts.Store(serverID, count)
+		}
 	}
 }

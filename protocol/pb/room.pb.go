@@ -229,6 +229,50 @@ func (x *RoomLeaveResp) GetError() string {
 	return ""
 }
 
+type RoomDestroyedPush struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MatchId       string                 `protobuf:"bytes,1,opt,name=match_id,json=matchId,proto3" json:"match_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RoomDestroyedPush) Reset() {
+	*x = RoomDestroyedPush{}
+	mi := &file_room_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RoomDestroyedPush) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RoomDestroyedPush) ProtoMessage() {}
+
+func (x *RoomDestroyedPush) ProtoReflect() protoreflect.Message {
+	mi := &file_room_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RoomDestroyedPush.ProtoReflect.Descriptor instead.
+func (*RoomDestroyedPush) Descriptor() ([]byte, []int) {
+	return file_room_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *RoomDestroyedPush) GetMatchId() string {
+	if x != nil {
+		return x.MatchId
+	}
+	return ""
+}
+
 var File_room_proto protoreflect.FileDescriptor
 
 const file_room_proto_rawDesc = "" +
@@ -246,7 +290,9 @@ const file_room_proto_rawDesc = "" +
 	"\bmatch_id\x18\x01 \x01(\tR\amatchId\"?\n" +
 	"\rRoomLeaveResp\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x14\n" +
-	"\x05error\x18\x02 \x01(\tR\x05errorB\x15Z\x13cardwar/protocol/pbb\x06proto3"
+	"\x05error\x18\x02 \x01(\tR\x05error\".\n" +
+	"\x11RoomDestroyedPush\x12\x19\n" +
+	"\bmatch_id\x18\x01 \x01(\tR\amatchIdB\x15Z\x13cardwar/protocol/pbb\x06proto3"
 
 var (
 	file_room_proto_rawDescOnce sync.Once
@@ -260,12 +306,13 @@ func file_room_proto_rawDescGZIP() []byte {
 	return file_room_proto_rawDescData
 }
 
-var file_room_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_room_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_room_proto_goTypes = []any{
-	(*RoomJoinReq)(nil),   // 0: pb.RoomJoinReq
-	(*RoomJoinResp)(nil),  // 1: pb.RoomJoinResp
-	(*RoomLeaveReq)(nil),  // 2: pb.RoomLeaveReq
-	(*RoomLeaveResp)(nil), // 3: pb.RoomLeaveResp
+	(*RoomJoinReq)(nil),       // 0: pb.RoomJoinReq
+	(*RoomJoinResp)(nil),      // 1: pb.RoomJoinResp
+	(*RoomLeaveReq)(nil),      // 2: pb.RoomLeaveReq
+	(*RoomLeaveResp)(nil),     // 3: pb.RoomLeaveResp
+	(*RoomDestroyedPush)(nil), // 4: pb.RoomDestroyedPush
 }
 var file_room_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
@@ -286,7 +333,7 @@ func file_room_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_room_proto_rawDesc), len(file_room_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

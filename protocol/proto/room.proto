@@ -24,3 +24,9 @@ message RoomLeaveResp {
   bool success = 1;
   string error = 2;
 }
+
+// ----- RoomSvr → MatchSvr (internal, room destroyed notification) -----
+
+message RoomDestroyedPush {
+  string match_id = 1;
+}

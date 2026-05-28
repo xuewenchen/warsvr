@@ -19,9 +19,9 @@ type broadcaster struct {
 	sendToAll func(msgID uint32, data []byte)
 }
 
-// NewBroadcaster creates a Broadcaster that sends to all Gateway connections
+// NewGateWayBroadcaster creates a Broadcaster that sends to all Gateway connections
 // registered on the given server (via MsgIdGatewayRegister).
-func NewBroadcaster(s ziface.IServer) Broadcaster {
+func NewGateWayBroadcaster(s ziface.IServer) Broadcaster {
 	return &broadcaster{
 		sendToAll: func(msgID uint32, data []byte) {
 			s.GetConnMgr().Range(func(connID uint64, conn ziface.IConnection, extra interface{}) error {

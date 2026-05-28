@@ -32,10 +32,11 @@ func main() {
 
 	s.AddRouter(protocol.MsgIdPing, &router.PingRouter{})
 	s.AddRouter(protocol.MsgIdGatewayRegister, &router.GatewayRegisterRouter{})
-	mr := &router.MatchRouter{BC: pkg.NewBroadcaster(s)}
+	mr := &router.MatchRouter{BC: pkg.NewGateWayBroadcaster(s)}
 	s.AddRouter(protocol.MsgIdMatchEnterReq, mr)
 	s.AddRouter(protocol.MsgIdMatchAllocateReq, mr)
 	s.AddRouter(protocol.MsgIdMatchQueryReq, mr)
+	s.AddRouter(protocol.MsgIdRoomDestroyedPush, mr)
 
 	s.Serve()
 }

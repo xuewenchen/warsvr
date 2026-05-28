@@ -30,6 +30,15 @@ apps/roomsvr/internal/router/
 
 - `rooms sync.Map` → `matchId → []playerID`（字符串列表，来自 `conn_tags["player_id"]`）
 
+## 依赖
+
+| 依赖 | 用途 |
+|---|---|
+| `pkg/registry` | Dial MatchSvr，房间销毁时发送通知 |
+| `pkg/broadcast` | Broadcaster（预留，房间内广播） |
+| `protocol` | msgID 常量 |
+| `protocol/pb` | RoomJoinReq/Resp, RoomLeaveReq/Resp, RoomDestroyedPush, Envelope |
+
 ## 启动
 
 ```bash
