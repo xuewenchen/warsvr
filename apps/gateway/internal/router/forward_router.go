@@ -35,10 +35,12 @@ func (r *ForwardRouter) Handle(request ziface.IRequest) {
 		return
 	}
 
+	// 封包
 	env := &pb.Envelope{
 		ConnId: request.GetConnection().GetConnID(),
 		Data:   request.GetData(),
 	}
+	// 封包塞入额外字段
 	if pid, err := request.GetConnection().GetProperty("playerId"); err == nil {
 		env.ConnTags = map[string]string{"player_id": strconv.FormatInt(pid.(int64), 10)}
 	}

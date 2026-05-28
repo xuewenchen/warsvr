@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CardWar Room</title>
+<script src="https://cdn.jsdelivr.net/npm/protobufjs@7/dist/protobuf.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',monospace;background:#1a1a2e;color:#eee;padding:16px;max-width:700px;margin:0 auto}
+  h2{font-size:16px;margin-bottom:8px}
+  .bar{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center}
+  .bar label{font-size:12px;color:#aaa}
+  .bar input,.bar button{padding:6px 10px;border-radius:4px;border:1px solid #444;background:#16213e;color:#eee;font-size:13px}
+  .bar button{cursor:pointer;background:#0f3460}
+  .bar button:hover{background:#1a5276}
+  .bar button:disabled{opacity:.3;cursor:not-allowed}
+  .bar button.leave{background:#8b0000}
+  .log{height:420px;overflow-y:auto;padding:10px;background:#0a0a18;border:1px solid #333;border-radius:4px;font-size:13px;margin-bottom:8px}
+  .log .m{padding:2px 0;border-bottom:1px solid #111}
+  .log .chat-global{color:#7ec8e3}
+  .log .chat-private{color:#f9ca24}
+  .log .room-event{color:#9b59b6}
+  .log .sys{color:#666}
+  .log .err{color:#f66}
+  .log .t{color:#555;font-size:11px;margin-right:6px}
+  .input-row{display:flex;gap:6px}
+  .input-row input{flex:1;padding:8px;border-radius:4px;border:1px solid #444;background:#0a0a18;color:#eee;font-size:13px}
+  .input-row input.short{width:80px;flex:none}
+  .input-row button{padding:8px 14px;border-radius:4px;cursor:pointer;background:#0f3460;border:1px solid #0f3460;color:#eee;font-size:12px}
+  .input-row button:disabled{opacity:.3}
+  #status{font-size:12px;color:#4f8;margin-left:8px}
+  #status.off{color:#f66}
+</style>
+</head>
+<body>
+
+<h2>CardWar Room <span id="status" class="off">offline</span></h2>
+
+<div class="bar">
+  <label>Secret:</label><input id="secret" value="change-me-in-production" size="22">
+  <label>GW:</label><input id="host" value="127.0.0.1:9001" size="13">
+  <label>Player:</label><input id="pid" value="1" size="4">
+  <button id="btnConn" onclick="doConnect()">Connect</button>
+  <button onclick="doDisconnect()">Disconnect</button>
+</div>
+
+<div class="bar">
+  <label>Room:</label><input id="roomName" value="lobby" size="12" placeholder="room name">
+  <button id="btnCreate" onclick="doCreateRoom()" disabled>Create Room</button>
+  <button id="btnJoin" onclick="doJoinRoom()" disabled>Join Room</button>
+  <button id="btnLeave" class="leave" onclick="doLeaveRoom()" disabled>Leave Room</button>
+  <span id="roomStatus" style="font-size:12px;color:#666"></span>
+</div>
+
+<div class="log" id="log"></div>
+
+<div class="input-row">
+  <input id="msgInput" placeholder="Chat message..." onkeydown="if(event.key==='Enter') doChat(false)" disabled>
+  <input id="targetId" class="short" value="2" placeholder="target" disabled>
+  <button id="btnGlobal" onclick="doChat(false)" disabled>Global</button>
+  <button id="btnPrivate" onclick="doChat(true)" disabled>Private</button>
+</div>
+
+<script>
+// ---- state ----
+var ws = null, ChatReq = null, ChatResp = null, MatchAllocateReq = null, MatchAllocateResp = null;
+var MatchQueryReq = null, MatchQueryResp = null, RoomJoinReq = null, RoomJoinResp = null;
+var RoomLeaveReq = null, RoomLeaveResp = null, RoomEventPush = null;
+var ready = false, currentRoom = '', currentServer = '';
+
+// ---- protobuf ----
+var protoStr = `
+  syntax = "proto3"; package pb;
+  message ChatReq { string content = 1; int64 target_player_id = 2; }
+  message ChatResp { int64 sender_player_id = 1; string content = 2; int64 timestamp = 3; int64 target_player_id = 4; }
+  message MatchAllocateReq { string match_id = 1; }
+  message MatchAllocateResp { string match_id = 1; string server_id = 2; string error = 3; }
+  message MatchQueryReq { string match_id = 1; }
+  message MatchQueryResp { string match_id = 1; string server_id = 2; bool found = 3; }
+  message RoomJoinReq { string match_id = 1; }
+  message RoomJoinResp { bool success = 1; string match_id = 2; string server_id = 3; string error = 4; }
+  message RoomLeaveReq { string match_id = 1; }
+  message RoomLeaveResp { bool success = 1; string error = 2; }
+  message RoomEventPush { string match_id = 1; string player_id = 2; string event = 3; int64 player_count = 4; }
+`;
+try {
+  var root = protobuf.parse(protoStr).root;
+  ChatReq=root.lookupType('pb.ChatReq'); ChatResp=root.lookupType('pb.ChatResp');
+  MatchAllocateReq=root.lookupType('pb.MatchAllocateReq'); MatchAllocateResp=root.lookupType('pb.MatchAllocateResp');
+  MatchQueryReq=root.lookupType('pb.MatchQueryReq'); MatchQueryResp=root.lookupType('pb.MatchQueryResp');
+  RoomJoinReq=root.lookupType('pb.RoomJoinReq'); RoomJoinResp=root.lookupType('pb.RoomJoinResp');
+  RoomLeaveReq=root.lookupType('pb.RoomLeaveReq'); RoomLeaveResp=root.lookupType('pb.RoomLeaveResp');
+  RoomEventPush=root.lookupType('pb.RoomEventPush');
+  ready=true; log('protobuf ready','sys');
+} catch(e) { log('protobuf error: '+e,'err'); }
+
+// ---- JWT ----
+async function genJWT(pid) {
+  var s=document.getElementById('secret').value, e=new TextEncoder();
+  var h=b64u(JSON.stringify({alg:'HS256',typ:'JWT'}));
+  var p=b64u(JSON.stringify({playerId:Number(pid),iat:Math.floor(Date.now()/1000)}));
+  var k=await crypto.subtle.importKey('raw',e.encode(s),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+  var sig=await crypto.subtle.sign('HMAC',k,e.encode(h+'.'+p));
+  return h+'.'+p+'.'+b64u(new Uint8Array(sig));
+}
+function b64u(d){if(d instanceof Uint8Array)d=String.fromCharCode.apply(null,d);return btoa(d).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');}
+
+// ---- Zinx DataPack BE ----
+function pack(msgId,body){var b=new ArrayBuffer(8+body.length),v=new DataView(b);v.setUint32(0,msgId,false);v.setUint32(4,body.length,false);new Uint8Array(b,8).set(body);return b}
+function unpack(d){if(d.byteLength<8)return null;var v=new DataView(d);return{msgId:v.getUint32(0,false),body:new Uint8Array(d,8,v.getUint32(4,false))}}
+
+// ---- connect ----
+async function doConnect(){
+  if(!ready){log('protobuf not ready','err');return}
+  var pid=document.getElementById('pid').value, host=document.getElementById('host').value;
+  log('Connecting as player '+pid+'...','sys');
+  var token=await genJWT(pid);
+  ws=new WebSocket('ws://'+host+'/ws?token='+encodeURIComponent(token)); ws.binaryType='arraybuffer';
+  ws.onopen=function(){setOnline(true);log('Connected as Player '+pid,'sys');enableUI(true)};
+  ws.onerror=function(){setOnline(false);log('WS error','err')};
+  ws.onmessage=function(e){var f=unpack(e.data);if(f)handleMsg(f.msgId,f.body)};
+  ws.onclose=function(){setOnline(false);log('Disconnected','err');enableUI(false);currentRoom='';currentServer='';updateRoomUI()};
+}
+
+function doDisconnect(){if(ws)ws.close();ws=null}
+
+// ---- room ----
+async function doCreateRoom(){
+  var name=document.getElementById('roomName').value.trim(); if(!name)return;
+  log('Creating room: '+name,'sys');
+  var req=MatchAllocateReq.encode(MatchAllocateReq.create({matchId:name})).finish();
+  ws.send(pack(18,req));
+}
+
+async function doJoinRoom(){
+  var name=document.getElementById('roomName').value.trim(); if(!name)return;
+  log('Joining room: '+name,'sys');
+  var req=MatchQueryReq.encode(MatchQueryReq.create({matchId:name})).finish();
+  ws.send(pack(20,req));
+}
+
+function doLeaveRoom(){
+  if(!currentRoom)return;
+  log('Leaving room: '+currentRoom,'sys');
+  var req=RoomLeaveReq.encode(RoomLeaveReq.create({matchId:currentRoom})).finish();
+  ws.send(pack(16,req));
+  currentRoom=''; currentServer=''; updateRoomUI();
+}
+
+function doChat(isPrivate){
+  if(!ws||ws.readyState!==WebSocket.OPEN||!currentRoom)return;
+  var inp=document.getElementById('msgInput'), content=inp.value.trim(); if(!content)return;
+  var target=isPrivate?Number(document.getElementById('targetId').value):0;
+  var req=ChatReq.encode(ChatReq.create({content:content,targetPlayerId:target})).finish();
+  ws.send(pack(5,req));
+  log('<b>SENT</b> '+(isPrivate?'[Private→'+target+']':'[Global]')+' '+content,'sys');
+  inp.value='';
+}
+
+// ---- receive ----
+function handleMsg(msgId,body){
+  if(msgId===19){ // MatchAllocateResp
+    var m=MatchAllocateResp.decode(body);
+    if(m.error){log('Allocate error: '+m.error,'err');return}
+    log('Allocated: '+m.matchId+' on '+m.server_id,'sys');
+    joinRoom(m.matchId);
+  }else if(msgId===21){ // MatchQueryResp
+    var m=MatchQueryResp.decode(body);
+    if(!m.found){log('Room not found: '+m.matchId,'err');return}
+    log('Found: '+m.matchId+' on '+m.server_id,'sys');
+    joinRoom(m.matchId);
+  }else if(msgId===15){ // RoomJoinResp
+    var m=RoomJoinResp.decode(body);
+    if(m.success){currentRoom=m.matchId;currentServer=m.serverId;log('Joined room: '+m.matchId+' on '+m.serverId,'room-event');updateRoomUI()}
+    else{log('Join failed: '+m.error,'err')}
+  }else if(msgId===17){ // RoomLeaveResp
+    var m=RoomLeaveResp.decode(body);
+    log(m.success?'Left room':'Leave failed: '+m.error,m.success?'sys':'err');
+    currentRoom='';currentServer='';updateRoomUI();
+  }else if(msgId===23){ // RoomEventPush
+    var m=RoomEventPush.decode(body);
+    log(m.playerId+' '+m.event+' the room ('+m.playerCount+' players)','room-event');
+  }else if(msgId===6){ // ChatResp
+    var m=ChatResp.decode(body);
+    if(m.senderPlayerId===-1){log('[ERR] '+m.content,'err')}
+    else{var cls=m.targetPlayerId?'chat-private':'chat-global';var l=m.targetPlayerId?'[Private '+m.senderPlayerId+'→'+m.targetPlayerId+']':'[Global '+m.senderPlayerId+']';log(l+' '+m.content,cls)}
+  }else if(msgId===2){log('Pong','sys')}
+}
+
+function joinRoom(matchId){
+  var req=RoomJoinReq.encode(RoomJoinReq.create({matchId:matchId})).finish();
+  ws.send(pack(14,req));
+}
+
+// ---- UI ----
+function setOnline(on){var e=document.getElementById('status');e.textContent=on?'online':'offline';e.className=on?'':'off'}
+function enableUI(on){
+  document.getElementById('btnCreate').disabled=!on;document.getElementById('btnJoin').disabled=!on;
+  document.getElementById('msgInput').disabled=!on;document.getElementById('targetId').disabled=!on;
+  document.getElementById('btnGlobal').disabled=!on;document.getElementById('btnPrivate').disabled=!on;
+  document.getElementById('btnConn').disabled=on;
+}
+function updateRoomUI(){
+  var r=document.getElementById('roomStatus'), b=document.getElementById('btnLeave');
+  if(currentRoom){r.textContent='In: '+currentRoom+' @ '+currentServer;b.disabled=false}
+  else{r.textContent='';b.disabled=true}
+}
+function log(t,cls){
+  var el=document.getElementById('log'); if(!el)return;
+  var d=new Date().toLocaleTimeString(),div=document.createElement('div');
+  div.className='m '+(cls||'');div.innerHTML='<span class="t">'+d+'</span>'+t;
+  el.appendChild(div);el.scrollTop=el.scrollHeight;
+}
+</script>
+</body>
+</html>

@@ -311,16 +311,22 @@ type instance struct {
 }
 
 func listInstances() []instance {
-	var list []instance
+	var backends, gateways []instance
 	for svcName, nodes := range conf.GlobalConfig.Services {
 		for _, n := range nodes {
-			if n.ID != "" {
-				_, p := parseHostPort(listenAddr(&n))
-				list = append(list, instance{svc: svcName, id: n.ID, port: p})
+			if n.ID == "" {
+				continue
+			}
+			_, p := parseHostPort(listenAddr(&n))
+			inst := instance{svc: svcName, id: n.ID, port: p}
+			if svcName == "gateway" {
+				gateways = append(gateways, inst)
+			} else {
+				backends = append(backends, inst)
 			}
 		}
 	}
-	return list
+	return append(backends, gateways...)
 }
 
 func listenAddr(n *conf.ServerNode) string {
@@ -384,50 +390,96 @@ func showStatus() {
 	out, _ := exec.Command("netstat", "-ano").Output()
 	nets := strings.Split(string(out), "\n")
 
-	fmt.Println()
-	fmt.Println("=== Gateway Instances ===")
-	for _, inst := range listInstancesOf("gateway") {
-		pid := findPIDByPort(inst.wsPort)
-		status := "DOWN"
-		if pid > 0 {
-			status = fmt.Sprintf("RUNNING (pid:%d)", pid)
-		}
-		fmt.Printf("  %s  ws:%d  tcp:%d  %s\n", inst.id, inst.wsPort, inst.tcpPort, status)
-		if pid > 0 {
-			for _, cs := range listInstancesOf("chatsvr") {
-				state := connState(nets, pid, cs.port)
-				fmt.Printf("    ├── %s  :%d  %s\n", cs.id, cs.port, state)
+	// Build pid→info map for all running instances
+	type runInfo struct {
+		svc, id string
+		port    int
+	}
+	pidInfo := map[int]runInfo{}
+	portPid := map[int]int{}
+	for svcName, nodes := range conf.GlobalConfig.Services {
+		for _, n := range nodes {
+			if n.ID == "" {
+				continue
+			}
+			_, p := parseHostPort(listenAddr(&n))
+			pid := findPIDByPort(p)
+			portPid[p] = pid
+			if pid > 0 {
+				pidInfo[pid] = runInfo{svc: svcName, id: n.ID, port: p}
 			}
 		}
 	}
 
+	// Topology: for each running instance, show connections to other services
 	fmt.Println()
-	fmt.Println("=== Backend Instances ===")
-	for svc, list := range groupByService() {
-		if svc == "gateway" {
+	fmt.Println("=== Service Topology ===")
+	printed := map[string]bool{}
+	for _, inst := range listInstancesOrdered() {
+		p := inst.port
+		if inst.svc == "gateway" {
+			p = inst.wsPort
+		}
+		pid := portPid[p]
+		label := inst.id
+		if inst.svc == "gateway" {
+			label = fmt.Sprintf("%s (ws:%d)", inst.id, inst.wsPort)
+		}
+		if pid > 0 {
+			label += fmt.Sprintf(" pid:%d", pid)
+		} else {
+			fmt.Printf("  %-30s [%s]  DOWN\n", label, inst.svc)
 			continue
 		}
-		title := svc
-		if len(title) > 0 {
-			title = strings.ToUpper(title[:1]) + title[1:]
-		}
-		fmt.Printf("%s:\n", title)
-		for _, inst := range list {
-			pid := findPIDByPort(inst.port)
-			gwCount := 0
-			for _, gw := range listInstancesOf("gateway") {
-				gwPID := findPIDByPort(gw.wsPort)
-				if gwPID > 0 && connState(nets, gwPID, inst.port) == "ESTABLISHED" {
-					gwCount++
+		fmt.Printf("  %-30s [%s]\n", label, inst.svc)
+
+		// Find all outbound ESTABLISHED connections from this PID
+		for otherPID, info := range pidInfo {
+			if otherPID == pid {
+				continue
+			}
+			if connPID(nets, pid, info.port) {
+				key := fmt.Sprintf("%s→%s", inst.id, info.id)
+				if printed[key] {
+					continue
 				}
+				printed[key] = true
+				fmt.Printf("    └── %s (%s) :%d ESTABLISHED\n", info.id, info.svc, info.port)
 			}
-			status := "DOWN"
-			if pid > 0 {
-				status = fmt.Sprintf("RUNNING (pid:%d, %d gateway(s))", pid, gwCount)
-			}
-			fmt.Printf("  %s  :%d  %s\n", inst.id, inst.port, status)
 		}
 	}
+}
+
+func listInstancesOrdered() []svcInstance {
+	var backends, gateways []svcInstance
+	for svcName, nodes := range conf.GlobalConfig.Services {
+		for _, n := range nodes {
+			inst := svcInstance{id: n.ID, svc: svcName}
+			if svcName == "gateway" {
+				_, inst.wsPort = parseHostPort(n.WSListen)
+				_, inst.tcpPort = parseHostPort(n.TCPListen)
+			} else {
+				_, inst.port = parseHostPort(n.Listen)
+			}
+			if svcName == "gateway" {
+				gateways = append(gateways, inst)
+			} else {
+				backends = append(backends, inst)
+			}
+		}
+	}
+	return append(backends, gateways...)
+}
+
+func connPID(nets []string, pid, port int) bool {
+	for _, line := range nets {
+		if strings.Contains(line, fmt.Sprintf(":%d", port)) &&
+			strings.Contains(line, "ESTABLISHED") &&
+			strings.Contains(line, strconv.Itoa(pid)) {
+			return true
+		}
+	}
+	return false
 }
 
 type svcInstance struct {

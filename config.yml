@@ -17,15 +17,15 @@ services:
     #   listen: 0.0.0.0:8002
     #   public_addr: 127.0.0.1:8002
 
-  matchsvr:
-    - id: matchsvr-1
-      listen: 0.0.0.0:8004
-      public_addr: 127.0.0.1:8004
-
   roomsvr:
     - id: roomsvr-1
       listen: 0.0.0.0:8005
       public_addr: 127.0.0.1:8005
+  
+  matchsvr:
+    - id: matchsvr-1
+      listen: 0.0.0.0:8004
+      public_addr: 127.0.0.1:8004
 
 gateway:
   jwt_secret: "change-me-in-production"
