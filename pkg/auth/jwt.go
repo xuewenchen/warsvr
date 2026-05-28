@@ -35,8 +35,11 @@ func ValidateJWT(tokenString, secret string) (int64, error) {
 	}
 
 	pid, ok := claims["playerId"].(float64)
+	if !ok {
+		pid, ok = claims["user_id"].(float64)
+	}
 	if !ok || pid == 0 {
-		return 0, fmt.Errorf("playerId not found in token")
+		return 0, fmt.Errorf("player_id not found in token")
 	}
 	return int64(pid), nil
 }
