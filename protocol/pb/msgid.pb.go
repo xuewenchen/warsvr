@@ -32,6 +32,20 @@ const (
 	MsgID_CHAT_RESP          MsgID = 6
 	// 注册信息
 	MsgID_GATEWAY_REGISTER MsgID = 1000
+	// ===== match pool
+	MsgID_MATCH_ENTER_REQ   MsgID = 11
+	MsgID_MATCH_ENTER_RESP  MsgID = 12
+	MsgID_MATCH_RESULT_PUSH MsgID = 13
+	// ===== match directory
+	MsgID_MATCH_ALLOCATE_REQ  MsgID = 18
+	MsgID_MATCH_ALLOCATE_RESP MsgID = 19
+	MsgID_MATCH_QUERY_REQ     MsgID = 20
+	MsgID_MATCH_QUERY_RESP    MsgID = 21
+	// ===== room
+	MsgID_ROOM_JOIN_REQ   MsgID = 14
+	MsgID_ROOM_JOIN_RESP  MsgID = 15
+	MsgID_ROOM_LEAVE_REQ  MsgID = 16
+	MsgID_ROOM_LEAVE_RESP MsgID = 17
 )
 
 // Enum value maps for MsgID.
@@ -43,14 +57,36 @@ var (
 		5:    "CHAT_REQ",
 		6:    "CHAT_RESP",
 		1000: "GATEWAY_REGISTER",
+		11:   "MATCH_ENTER_REQ",
+		12:   "MATCH_ENTER_RESP",
+		13:   "MATCH_RESULT_PUSH",
+		18:   "MATCH_ALLOCATE_REQ",
+		19:   "MATCH_ALLOCATE_RESP",
+		20:   "MATCH_QUERY_REQ",
+		21:   "MATCH_QUERY_RESP",
+		14:   "ROOM_JOIN_REQ",
+		15:   "ROOM_JOIN_RESP",
+		16:   "ROOM_LEAVE_REQ",
+		17:   "ROOM_LEAVE_RESP",
 	}
 	MsgID_value = map[string]int32{
-		"MSG_ID_UNSPECIFIED": 0,
-		"PING":               1,
-		"PONG":               2,
-		"CHAT_REQ":           5,
-		"CHAT_RESP":          6,
-		"GATEWAY_REGISTER":   1000,
+		"MSG_ID_UNSPECIFIED":  0,
+		"PING":                1,
+		"PONG":                2,
+		"CHAT_REQ":            5,
+		"CHAT_RESP":           6,
+		"GATEWAY_REGISTER":    1000,
+		"MATCH_ENTER_REQ":     11,
+		"MATCH_ENTER_RESP":    12,
+		"MATCH_RESULT_PUSH":   13,
+		"MATCH_ALLOCATE_REQ":  18,
+		"MATCH_ALLOCATE_RESP": 19,
+		"MATCH_QUERY_REQ":     20,
+		"MATCH_QUERY_RESP":    21,
+		"ROOM_JOIN_REQ":       14,
+		"ROOM_JOIN_RESP":      15,
+		"ROOM_LEAVE_REQ":      16,
+		"ROOM_LEAVE_RESP":     17,
 	}
 )
 
@@ -85,14 +121,25 @@ var File_msgid_proto protoreflect.FileDescriptor
 
 const file_msgid_proto_rawDesc = "" +
 	"\n" +
-	"\vmsgid.proto\x12\x02pb*g\n" +
+	"\vmsgid.proto\x12\x02pb*\xd5\x02\n" +
 	"\x05MsgID\x12\x16\n" +
 	"\x12MSG_ID_UNSPECIFIED\x10\x00\x12\b\n" +
 	"\x04PING\x10\x01\x12\b\n" +
 	"\x04PONG\x10\x02\x12\f\n" +
 	"\bCHAT_REQ\x10\x05\x12\r\n" +
 	"\tCHAT_RESP\x10\x06\x12\x15\n" +
-	"\x10GATEWAY_REGISTER\x10\xe8\aB\x15Z\x13cardwar/protocol/pbb\x06proto3"
+	"\x10GATEWAY_REGISTER\x10\xe8\a\x12\x13\n" +
+	"\x0fMATCH_ENTER_REQ\x10\v\x12\x14\n" +
+	"\x10MATCH_ENTER_RESP\x10\f\x12\x15\n" +
+	"\x11MATCH_RESULT_PUSH\x10\r\x12\x16\n" +
+	"\x12MATCH_ALLOCATE_REQ\x10\x12\x12\x17\n" +
+	"\x13MATCH_ALLOCATE_RESP\x10\x13\x12\x13\n" +
+	"\x0fMATCH_QUERY_REQ\x10\x14\x12\x14\n" +
+	"\x10MATCH_QUERY_RESP\x10\x15\x12\x11\n" +
+	"\rROOM_JOIN_REQ\x10\x0e\x12\x12\n" +
+	"\x0eROOM_JOIN_RESP\x10\x0f\x12\x12\n" +
+	"\x0eROOM_LEAVE_REQ\x10\x10\x12\x13\n" +
+	"\x0fROOM_LEAVE_RESP\x10\x11B\x15Z\x13cardwar/protocol/pbb\x06proto3"
 
 var (
 	file_msgid_proto_rawDescOnce sync.Once

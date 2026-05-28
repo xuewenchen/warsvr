@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package pb;
+option go_package = "cardwar/protocol/pb";
+
+// ----- Room messages (Client ↔ RoomSvr) -----
+
+message RoomJoinReq {
+  string match_id = 1;
+}
+
+message RoomJoinResp {
+  bool success = 1;
+  string match_id = 2;
+  string server_id = 3;
+  string error = 4;
+}
+
+message RoomLeaveReq {
+  string match_id = 1;
+}
+
+message RoomLeaveResp {
+  bool success = 1;
+  string error = 2;
+}

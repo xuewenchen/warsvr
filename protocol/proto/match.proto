@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package pb;
+option go_package = "cardwar/protocol/pb";
+
+// ----- Matchmaking pool (11-13) -----
+
+message MatchEnterReq {
+  string match_type = 1;   // "1v1" | "2v2" | "3v3" | "5v5"
+  int64 elo = 2;           // optional, for skill-based matching
+}
+
+message MatchEnterResp {
+  string status = 1;       // "waiting"
+  int64 queue_size = 2;    // current players in this queue
+}
+
+message MatchResultPush {
+  string match_id = 1;
+  string server_id = 2;
+  repeated int64 players = 3;
+  string match_type = 4;
+}
+
+// ----- Match directory queries (18-21) -----
+
+message MatchAllocateReq {
+  string match_id = 1;     // desired match ID (e.g., "room-lobby-1")
+}
+
+message MatchAllocateResp {
+  string match_id = 1;
+  string server_id = 2;    // assigned roomsvr instance
+  string error = 3;        // empty = success, "already exists" | "no roomsvr available"
+}
+
+message MatchQueryReq {
+  string match_id = 1;     // which match to look up
+}
+
+message MatchQueryResp {
+  string match_id = 1;
+  string server_id = 2;
+  bool found = 3;
+}

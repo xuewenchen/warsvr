@@ -8,9 +8,25 @@ const (
 	MsgIdPong     = uint32(pb.MsgID_PONG)
 	MsgIdChatReq  = uint32(pb.MsgID_CHAT_REQ)
 	MsgIdChatResp = uint32(pb.MsgID_CHAT_RESP)
+
+	// ===== match pool
+	MsgIdMatchEnterReq   = uint32(pb.MsgID_MATCH_ENTER_REQ)
+	MsgIdMatchEnterResp  = uint32(pb.MsgID_MATCH_ENTER_RESP)
+	MsgIdMatchResultPush  = uint32(pb.MsgID_MATCH_RESULT_PUSH)
+
+	// ===== match directory
+	MsgIdMatchAllocateReq  = uint32(pb.MsgID_MATCH_ALLOCATE_REQ)
+	MsgIdMatchAllocateResp = uint32(pb.MsgID_MATCH_ALLOCATE_RESP)
+	MsgIdMatchQueryReq     = uint32(pb.MsgID_MATCH_QUERY_REQ)
+	MsgIdMatchQueryResp    = uint32(pb.MsgID_MATCH_QUERY_RESP)
+
+	// ===== room
+	MsgIdRoomJoinReq   = uint32(pb.MsgID_ROOM_JOIN_REQ)
+	MsgIdRoomJoinResp  = uint32(pb.MsgID_ROOM_JOIN_RESP)
+	MsgIdRoomLeaveReq  = uint32(pb.MsgID_ROOM_LEAVE_REQ)
+	MsgIdRoomLeaveResp = uint32(pb.MsgID_ROOM_LEAVE_RESP)
 )
 
-// gateway注册后端服务时使用的消息ID
 const (
 	MsgIdGatewayRegister = uint32(pb.MsgID_GATEWAY_REGISTER)
 )

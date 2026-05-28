@@ -4,6 +4,10 @@ services:
       tcp_listen: 0.0.0.0:9000
       ws_listen: 0.0.0.0:9001
       public_addr: 127.0.0.1:9000
+    # - id: gw-2
+    #   tcp_listen: 0.0.0.0:9002
+    #   ws_listen: 0.0.0.0:9003
+    #   public_addr: 127.0.0.1:9002
 
   chatsvr:
     - id: cs-1
@@ -12,17 +16,29 @@ services:
     # - id: cs-2
     #   listen: 0.0.0.0:8002
     #   public_addr: 127.0.0.1:8002
-  
+
+  matchsvr:
+    - id: matchsvr-1
+      listen: 0.0.0.0:8004
+      public_addr: 127.0.0.1:8004
+
+  roomsvr:
+    - id: roomsvr-1
+      listen: 0.0.0.0:8005
+      public_addr: 127.0.0.1:8005
+
 gateway:
   jwt_secret: "change-me-in-production"
   routes:
     chatsvr:
-      forward: [5]          # MsgIdChat
+      forward: [5]
       route_key: playerId
-      route_type: hash    # "hash" (default) or "random"
-    # roomsvr:
-    #   forward: [7, 8]
-    #   route_key: server_id    # 精准路由——客户端/上游设置 server_id
-    #   route_type: direct      # 遍历连接找 server_id 匹配的
-
-      
+      route_type: hash
+    matchsvr:
+      forward: [11, 18, 20]
+      route_key: connId
+      route_type: hash
+    roomsvr:
+      forward: [14, 16]
+      route_key: server_id
+      route_type: direct

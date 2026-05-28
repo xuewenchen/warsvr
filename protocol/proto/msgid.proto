@@ -14,4 +14,21 @@ enum MsgID {
 
   // 注册信息
   GATEWAY_REGISTER = 1000;
+
+  // ===== match pool
+  MATCH_ENTER_REQ = 11;
+  MATCH_ENTER_RESP = 12;
+  MATCH_RESULT_PUSH = 13;
+
+  // ===== match directory
+  MATCH_ALLOCATE_REQ = 18;
+  MATCH_ALLOCATE_RESP = 19;
+  MATCH_QUERY_REQ = 20;
+  MATCH_QUERY_RESP = 21;
+
+  // ===== room
+  ROOM_JOIN_REQ = 14;
+  ROOM_JOIN_RESP = 15;
+  ROOM_LEAVE_REQ = 16;
+  ROOM_LEAVE_RESP = 17;
 }

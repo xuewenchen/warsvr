@@ -142,20 +142,54 @@ func handleQuery(args []string) {
 
 func doBuild(target string) {
 	if target == "all" {
-		buildOne("chatsvr")
-		buildOne("gateway")
+		for _, svc := range discoverServices() {
+			buildOne(svc)
+		}
+		buildSelf()
 		return
 	}
-	if target == "chatsvr" || target == "gateway" {
-		buildOne(target)
-		return
+	// Try as service name directly
+	for _, svc := range discoverServices() {
+		if target == svc {
+			buildOne(svc)
+			return
+		}
 	}
+	// Try as instance ID (look up in config)
 	svc, _ := findServiceNode(target)
 	if svc == "" {
-		fmt.Fprintf(os.Stderr, "ERROR: instance %q not found in config\n", target)
+		fmt.Fprintf(os.Stderr, "ERROR: %q is not a service or instance\n", target)
+		fmt.Fprintf(os.Stderr, "  Services: %s\n", strings.Join(discoverServices(), ", "))
 		os.Exit(1)
 	}
 	buildOne(svc)
+}
+
+func discoverServices() []string {
+	entries, err := os.ReadDir("apps")
+	if err != nil {
+		return nil
+	}
+	var svcs []string
+	for _, e := range entries {
+		if e.IsDir() {
+			if _, err := os.Stat("apps/" + e.Name() + "/cmd"); err == nil {
+				svcs = append(svcs, e.Name())
+			}
+		}
+	}
+	return svcs
+}
+
+func buildSelf() {
+	fmt.Printf(">>> Building svchelper...\n")
+	cmd := exec.Command("go", "build", "-o", fmt.Sprintf("bin/svchelper%s", exeExt()), "./tools/svchelper/")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "build svchelper failed: %v\n", err)
+	}
+	fmt.Printf("  -> bin/svchelper%s\n", exeExt())
 }
 
 func buildOne(svc string) {
