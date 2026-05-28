@@ -30,18 +30,19 @@ const (
 	MsgID_PONG               MsgID = 2
 	MsgID_CHAT_REQ           MsgID = 5
 	MsgID_CHAT_RESP          MsgID = 6
-	MsgID_GATEWAY_REGISTER   MsgID = 100
+	// 注册信息
+	MsgID_GATEWAY_REGISTER MsgID = 1000
 )
 
 // Enum value maps for MsgID.
 var (
 	MsgID_name = map[int32]string{
-		0:   "MSG_ID_UNSPECIFIED",
-		1:   "PING",
-		2:   "PONG",
-		5:   "CHAT_REQ",
-		6:   "CHAT_RESP",
-		100: "GATEWAY_REGISTER",
+		0:    "MSG_ID_UNSPECIFIED",
+		1:    "PING",
+		2:    "PONG",
+		5:    "CHAT_REQ",
+		6:    "CHAT_RESP",
+		1000: "GATEWAY_REGISTER",
 	}
 	MsgID_value = map[string]int32{
 		"MSG_ID_UNSPECIFIED": 0,
@@ -49,7 +50,7 @@ var (
 		"PONG":               2,
 		"CHAT_REQ":           5,
 		"CHAT_RESP":          6,
-		"GATEWAY_REGISTER":   100,
+		"GATEWAY_REGISTER":   1000,
 	}
 )
 
@@ -84,14 +85,14 @@ var File_msgid_proto protoreflect.FileDescriptor
 
 const file_msgid_proto_rawDesc = "" +
 	"\n" +
-	"\vmsgid.proto\x12\x02pb*f\n" +
+	"\vmsgid.proto\x12\x02pb*g\n" +
 	"\x05MsgID\x12\x16\n" +
 	"\x12MSG_ID_UNSPECIFIED\x10\x00\x12\b\n" +
 	"\x04PING\x10\x01\x12\b\n" +
 	"\x04PONG\x10\x02\x12\f\n" +
 	"\bCHAT_REQ\x10\x05\x12\r\n" +
-	"\tCHAT_RESP\x10\x06\x12\x14\n" +
-	"\x10GATEWAY_REGISTER\x10dB\x15Z\x13cardwar/protocol/pbb\x06proto3"
+	"\tCHAT_RESP\x10\x06\x12\x15\n" +
+	"\x10GATEWAY_REGISTER\x10\xe8\aB\x15Z\x13cardwar/protocol/pbb\x06proto3"
 
 var (
 	file_msgid_proto_rawDescOnce sync.Once

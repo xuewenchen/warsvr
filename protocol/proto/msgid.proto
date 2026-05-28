@@ -10,5 +10,8 @@ enum MsgID {
   PONG = 2;
   CHAT_REQ = 5;
   CHAT_RESP = 6;
-  GATEWAY_REGISTER = 100;
+
+
+  // 注册信息
+  GATEWAY_REGISTER = 1000;
 }
