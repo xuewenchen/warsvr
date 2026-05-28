@@ -44,6 +44,10 @@
   <button id="btnConnect" onclick="connectBoth()">Connect Both</button>
   <button class="danger" onclick="disconnectBoth()">Disconnect All</button>
   <span id="protoStatus" style="color:#f66;font-size:12px">loading protobuf...</span>
+  <br>
+  <span style="font-size:11px;color:#888">Manual tokens (paste if auto-gen fails):</span>
+  <input id="token1" size="70" placeholder="Paste JWT for Player 1" style="font-size:11px">
+  <input id="token2" size="70" placeholder="Paste JWT for Player 2" style="font-size:11px">
 </div>
 
 <div class="panels">
@@ -52,7 +56,7 @@
     <h3>Player 1 <span id="status1" class="off">offline</span></h3>
     <div class="status">
       ID:<input id="pid1" value="1" size="6" style="background:#0a0a18;border:1px solid #444;color:#eee;padding:2px 4px;">
-      GW:<input id="host1" value="127.0.0.1:9000" size="13" style="background:#0a0a18;border:1px solid #444;color:#eee;padding:2px 4px;">
+      GW:<input id="host1" value="127.0.0.1:9001" size="13" style="background:#0a0a18;border:1px solid #444;color:#eee;padding:2px 4px;">
       Target:<input id="target1" value="2" size="6" style="background:#0a0a18;border:1px solid #444;color:#eee;padding:2px 4px;">
     </div>
     <div class="log" id="log1"></div>
@@ -67,7 +71,7 @@
     <h3>Player 2 <span id="status2" class="off">offline</span></h3>
     <div class="status">
       ID:<input id="pid2" value="2" size="6" style="background:#0a0a18;border:1px solid #444;color:#eee;padding:2px 4px;">
-      GW:<input id="host2" value="127.0.0.1:9001" size="13" style="background:#0a0a18;border:1px solid #444;color:#eee;padding:2px 4px;">
+      GW:<input id="host2" value="127.0.0.1:9003" size="13" style="background:#0a0a18;border:1px solid #444;color:#eee;padding:2px 4px;">
       Target:<input id="target2" value="1" size="6" style="background:#0a0a18;border:1px solid #444;color:#eee;padding:2px 4px;">
     </div>
     <div class="log" id="log2"></div>
@@ -149,8 +153,25 @@ function unpackFrame(data) {
 async function connectPlayer(n) {
   var pid = document.getElementById('pid'+n).value;
   var host = document.getElementById('host'+n).value;
-  log(n, 'Generating JWT for player '+pid+'...', 'confirm');
-  var token = await generateJWT(pid);
+  var manual = document.getElementById('token'+n).value.trim();
+  var token = '';
+
+  if (manual) {
+    token = manual;
+    log(n, 'Using manual token for player '+pid, 'confirm');
+  } else if (window.crypto && window.crypto.subtle) {
+    try {
+      log(n, 'Generating JWT...', 'confirm');
+      token = await generateJWT(pid);
+    } catch(e) {
+      log(n, 'JWT generation failed: '+e.message+'. Try manual token.', 'error');
+      return;
+    }
+  } else {
+    log(n, 'crypto.subtle not available. Generate token via CLI and paste below.', 'error');
+    log(n, 'Run: go run ./tools/svchelper/ jwt '+pid, 'error');
+    return;
+  }
   var ws = new WebSocket('ws://'+host+'/ws?token='+encodeURIComponent(token));
   ws.binaryType = 'arraybuffer';
 

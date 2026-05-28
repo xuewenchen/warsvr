@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cardwar/pkg/auth"
 	"cardwar/pkg/conf"
 	"context"
 	"fmt"
@@ -18,7 +19,7 @@ func main() {
 	}
 
 	cmd := os.Args[1]
-	if cmd == "list" || cmd == "type" || cmd == "port" {
+	if cmd == "list" || cmd == "type" || cmd == "port" || cmd == "jwt" {
 		handleQuery(os.Args)
 		return
 	}
@@ -73,13 +74,15 @@ func usage() {
 	fmt.Println("  list [config]   show all instances")
 	fmt.Println("  type <id>       get service type for instance")
 	fmt.Println("  port <id>       get listen port for instance")
+	fmt.Println("  jwt <playerId>  generate JWT token for player")
 }
 
 // ---- query commands ----
 
 func handleQuery(args []string) {
 	configPath := "config.yml"
-	if len(args) > 2 {
+	// Use last arg as config only if it ends with .yml/.yaml or has >=4 args
+	if len(args) >= 4 || (len(args) == 3 && strings.HasSuffix(args[2], ".yml")) {
 		configPath = args[len(args)-1]
 	}
 	if err := conf.Load(configPath); err != nil {
@@ -114,6 +117,19 @@ func handleQuery(args []string) {
 		}
 		_, p := parseHostPort(listenAddr(node))
 		fmt.Println(p)
+
+	case "jwt":
+		if len(args) < 3 {
+			os.Exit(1)
+		}
+		playerID, _ := strconv.ParseInt(args[2], 10, 64)
+		secret := conf.GlobalConfig.Gateway.JWTSecret
+		token, err := auth.GenerateJWT(playerID, secret)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "jwt error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println(token)
 	}
 }
 

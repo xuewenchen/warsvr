@@ -69,7 +69,8 @@
       "Bash(cmd //c \"echo %TEMP%\")",
       "Bash(bin/svchelper.exe start *)",
       "Bash(bin/svchelper.exe stop *)",
-      "Bash(bin/svchelper.exe restart *)"
+      "Bash(bin/svchelper.exe restart *)",
+      "Bash(bin/svchelper.exe jwt *)"
     ]
   }
 }
