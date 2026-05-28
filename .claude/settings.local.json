@@ -40,7 +40,10 @@
       "Bash(./scripts/build.bat)",
       "Bash(protoc --csharp_out=/tmp/test .)",
       "Bash(mkdir -p examples/csharp/CardWarClient)",
-      "Bash(protoc --csharp_out=examples/csharp/CardWarClient --proto_path=protocol/proto protocol/proto/cardwar.proto)"
+      "Bash(protoc --csharp_out=examples/csharp/CardWarClient --proto_path=protocol/proto protocol/proto/cardwar.proto)",
+      "Bash(cat .gitignore)",
+      "Bash(git ls-files *)",
+      "Bash(git rm *)"
     ]
   }
 }
