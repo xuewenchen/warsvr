@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package pb;
+option go_package = "cardwar/protocol/pb";
+
+// Message IDs for Zinx routing. All client-server messages are routed by these.
+enum MsgID {
+  MSG_ID_UNSPECIFIED = 0;
+  PING = 1;
+  PONG = 2;
+  CHAT_REQ = 5;
+  CHAT_RESP = 6;
+  GATEWAY_REGISTER = 100;
+}

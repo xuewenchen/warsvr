@@ -2,6 +2,18 @@
 
 All scripts run from repository root, pass parameters for config and instance ID.
 
+## Generate Protobuf
+
+```bash
+# Linux
+./scripts/gen_pb.sh
+
+# Windows
+scripts\gen_pb.bat
+```
+
+Regenerates all `.proto` files in `protocol/proto/` to Go code in `protocol/pb/`. Requires `protoc` and `protoc-gen-go` installed.
+
 ## Build
 
 | Platform | Command | Description |

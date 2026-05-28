@@ -43,7 +43,9 @@
       "Bash(protoc --csharp_out=examples/csharp/CardWarClient --proto_path=protocol/proto protocol/proto/cardwar.proto)",
       "Bash(cat .gitignore)",
       "Bash(git ls-files *)",
-      "Bash(git rm *)"
+      "Bash(git rm *)",
+      "Bash(protoc --proto_path=protocol/proto --go_out=protocol/pb --go_opt=paths=source_relative protocol/proto/msgid.proto)",
+      "Bash(./scripts/gen_pb.bat)"
     ]
   }
 }
