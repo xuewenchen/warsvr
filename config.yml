@@ -21,6 +21,9 @@ services:
     - id: roomsvr-1
       listen: 0.0.0.0:8005
       public_addr: 127.0.0.1:8005
+    - id: roomsvr-2
+      listen: 0.0.0.0:8006
+      public_addr: 127.0.0.1:8006
   
   matchsvr:
     - id: matchsvr-1
