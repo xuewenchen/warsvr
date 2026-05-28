@@ -17,7 +17,7 @@ Minimal C# client for the CardWar Gateway. Connects via WebSocket with JWT authe
 ## Quick Start
 
 ```bash
-dotnet run          # Player 1 (default)
+dotnet run -- 1     # Player 1 (default)
 dotnet run -- 2     # Player 2
 dotnet run -- 3     # Player 3
 ```

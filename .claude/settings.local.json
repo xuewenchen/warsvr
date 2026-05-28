@@ -45,7 +45,13 @@
       "Bash(git ls-files *)",
       "Bash(git rm *)",
       "Bash(protoc --proto_path=protocol/proto --go_out=protocol/pb --go_opt=paths=source_relative protocol/proto/msgid.proto)",
-      "Bash(./scripts/gen_pb.bat)"
+      "Bash(./scripts/gen_pb.bat)",
+      "Bash(./scripts/svc.bat build *)",
+      "Bash(./scripts/svc.bat start *)",
+      "Bash(./scripts/svc.bat stop *)",
+      "Bash(grep -q '^log/$' .gitignore)",
+      "Bash(echo 'log/')",
+      "Bash(tasklist /fi \"imagename eq chatsvr.exe\")"
     ]
   }
 }

@@ -3,3 +3,4 @@
 bin/
 examples/csharp/CardWarClient/bin/
 examples/csharp/CardWarClient/obj/
+log/
