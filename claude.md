@@ -96,10 +96,20 @@ gateway:
       route_key: playerId
     roomsvr:
       forward: [7, 8, 9]
-      route_key: roomId     # custom property for stateful routing
-      route_type: hash
+      route_key: server_id    # direct route to specific instance
+      route_type: direct
 ```
 Plus add `roomsvr` to `services` section. No Go code changes needed.
+
+**Route types** (`route_type`):
+
+| type | behavior | use case |
+|---|---|---|
+| `hash` | `RouteTo(backend, key)` → hash to one of N connections | stateless (chatsvr) |
+| `random` | Pick any healthy connection randomly | stateless, no affinity |
+| `direct` | Match `conn.GetProperty("server_id")` == route key | stateful (roomsvr): client sets `server_id` on conn, Gateway routes to exact instance |
+
+Each backend connection has `server_id` set automatically (from `config.yml` instance ID). For `direct`, the client or a prior response sets `conn.SetProperty("server_id", "roomsvr-1")` on the WebSocket connection; subsequent messages with that route key go to the exact instance.
 
 **Adding new msgIDs to an existing backend**: just edit the `forward`/`response` lists in `config.yml`. Gateway hot-reloads routes without restart. New msgIDs must be within 1–1000 (the pre-registered range).
 
@@ -129,7 +139,7 @@ For services with extra state (e.g., Gateway), embed `*pkg.Registry` in a wrappe
 **`pkg.Pool`**: Generic connection pool with:
 - Thread-safe connection management with `HealthyConns()`
 - Automatic reconnection with exponential backoff (200ms → … → 5s), rate-limited logging
-- Pluggable routing via `RouteFunc` (`HashRoute`, `RandomRoute`, or custom). Use `pkg.RouteFuncFor(type)` to select by config.
+- Pluggable routing via `RouteFunc`: `HashRoute` (by key), `RandomRoute`, `DirectRoute` (by `server_id`). Use `pkg.RouteFuncFor(type)` to select by config.
 - `Sync()` for hot-reload: adds new servers, removes deleted ones atomically
 
 **`pkg.BackendPool`**: Interface with `Route(key string) ziface.IConnection`. `Pool` implements this.
