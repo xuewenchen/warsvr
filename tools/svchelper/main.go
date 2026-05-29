@@ -319,7 +319,7 @@ func listInstances() []instance {
 			}
 			_, p := parseHostPort(listenAddr(&n))
 			inst := instance{svc: svcName, id: n.ID, port: p}
-			if svcName == "gateway" {
+			if svcName == conf.SvcGateway {
 				gateways = append(gateways, inst)
 			} else {
 				backends = append(backends, inst)
@@ -417,12 +417,12 @@ func showStatus() {
 	printed := map[string]bool{}
 	for _, inst := range listInstancesOrdered() {
 		p := inst.port
-		if inst.svc == "gateway" {
+		if inst.svc == conf.SvcGateway {
 			p = inst.wsPort
 		}
 		pid := portPid[p]
 		label := inst.id
-		if inst.svc == "gateway" {
+		if inst.svc == conf.SvcGateway {
 			label = fmt.Sprintf("%s (ws:%d)", inst.id, inst.wsPort)
 		}
 		if pid > 0 {
@@ -455,13 +455,13 @@ func listInstancesOrdered() []svcInstance {
 	for svcName, nodes := range conf.GlobalConfig.Services {
 		for _, n := range nodes {
 			inst := svcInstance{id: n.ID, svc: svcName}
-			if svcName == "gateway" {
+			if svcName == conf.SvcGateway {
 				_, inst.wsPort = parseHostPort(n.WSListen)
 				_, inst.tcpPort = parseHostPort(n.TCPListen)
 			} else {
 				_, inst.port = parseHostPort(n.Listen)
 			}
-			if svcName == "gateway" {
+			if svcName == conf.SvcGateway {
 				gateways = append(gateways, inst)
 			} else {
 				backends = append(backends, inst)
@@ -495,7 +495,7 @@ func listInstancesOf(svc string) []svcInstance {
 	nodes := conf.GlobalConfig.Services[svc]
 	for _, n := range nodes {
 		inst := svcInstance{id: n.ID, svc: svc}
-		if svc == "gateway" {
+		if svc == conf.SvcGateway {
 			_, inst.wsPort = parseHostPort(n.WSListen)
 			_, inst.tcpPort = parseHostPort(n.TCPListen)
 		} else {
@@ -509,7 +509,7 @@ func listInstancesOf(svc string) []svcInstance {
 func groupByService() map[string][]svcInstance {
 	m := make(map[string][]svcInstance)
 	for svc := range conf.GlobalConfig.Services {
-		if svc == "gateway" {
+		if svc == conf.SvcGateway {
 			continue
 		}
 		m[svc] = listInstancesOf(svc)

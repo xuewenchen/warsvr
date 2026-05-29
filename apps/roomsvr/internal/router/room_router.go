@@ -2,6 +2,7 @@ package router
 
 import (
 	"cardwar/pkg"
+	"cardwar/pkg/conf"
 	"cardwar/protocol"
 	"cardwar/protocol/pb"
 	"sync"
@@ -134,7 +135,7 @@ func (r *RoomRouter) notifyMatchSvr(matchID string) {
 	if r.Reg == nil {
 		return
 	}
-	conn := r.Reg.RouteTo("matchsvr", matchID)
+	conn := r.Reg.RouteTo(conf.SvcMatchSvr, matchID)
 	if conn == nil {
 		zlog.Ins().ErrorF("RoomSvr: no matchsvr connection for destroy notification")
 		return

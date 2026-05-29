@@ -30,7 +30,7 @@ func main() {
 
 	// 初始化网关服务
 	gw := &router.GatewayRef{
-		Registry:    pkg.NewRegistry("gateway"),
+		Registry:    pkg.NewRegistry(conf.SvcGateway),
 		PlayerConns: &sync.Map{},
 	}
 	gw.SetRoutes(routeIndex)
@@ -59,14 +59,14 @@ func main() {
 }
 
 func initWebSocket(gw *router.GatewayRef, gwID string) {
-	gwCfg := conf.LookupServer(conf.GlobalConfig.Services["gateway"], gwID, "Gateway")
+	gwCfg := conf.LookupServer(conf.GlobalConfig.Services[conf.SvcGateway], gwID, conf.SvcGateway)
 	jwtSecret := conf.GlobalConfig.Gateway.JWTSecret
 
 	_, wsPort := conf.ParseHostPort(gwCfg.WSListen)
 	tcpHost, tcpPort := conf.ParseHostPort(gwCfg.TCPListen)
 
 	serverCfg := &zconf.Config{
-		Name:    "Gateway",
+		Name:    conf.SvcGateway,
 		Host:    tcpHost,
 		TCPPort: tcpPort,
 		WsPort:  wsPort,

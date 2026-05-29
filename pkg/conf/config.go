@@ -26,7 +26,7 @@ type Config struct {
 }
 
 // ServicesConfig maps backend names to their server node lists.
-// Keys are service names like "gateway", "chatsvr", etc.
+// Keys are service names defined by the Svc* constants above.
 type ServicesConfig map[string][]ServerNode
 
 type ServerNode struct {

@@ -19,11 +19,11 @@ func main() {
 		panic(err)
 	}
 
-	csCfg := conf.LookupServer(conf.GlobalConfig.Services["chatsvr"], *csID, "ChatSvr")
+	csCfg := conf.LookupServer(conf.GlobalConfig.Services[conf.SvcChatSvr], *csID, conf.SvcChatSvr)
 	host, port := conf.ParseHostPort(csCfg.Listen)
 
 	cfg := &zconf.Config{
-		Name:    "ChatSvr",
+		Name:    conf.SvcChatSvr,
 		Host:    host,
 		TCPPort: port,
 		Mode:    zconf.ServerModeTcp,

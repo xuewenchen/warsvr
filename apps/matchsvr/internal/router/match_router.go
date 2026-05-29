@@ -93,7 +93,7 @@ func (r *MatchRouter) handleEnter(env *pb.Envelope, conn ziface.IConnection) {
 }
 
 func (r *MatchRouter) matchPool(matchType string, pool []queuedPlayer) {
-	serverID := r.pickLeastLoaded("roomsvr")
+	serverID := r.pickLeastLoaded(conf.SvcRoomSvr)
 	matchID := fmt.Sprintf("match-%s-%d", matchType, time.Now().UnixNano())
 
 	players := playerIDs(pool)
@@ -140,7 +140,7 @@ func (r *MatchRouter) handleAllocate(env *pb.Envelope, conn ziface.IConnection) 
 		return
 	}
 
-	serverID := r.pickLeastLoaded("roomsvr")
+	serverID := r.pickLeastLoaded(conf.SvcRoomSvr)
 	if serverID == "" {
 		r.sendAllocateResp(conn, env.ConnId, req.MatchId, "", "no roomsvr available")
 		return

@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"cardwar/pkg/conf"
 	"cardwar/protocol"
 	"cardwar/protocol/pb"
 	"sync"
@@ -47,7 +48,7 @@ func connectGateway(t *testing.T, port int, ch chan receivedMsg) ziface.IConnect
 	client.AddRouter(protocol.MsgIdChatResp, &testRecvRouter{ch: ch})
 	connCh := make(chan ziface.IConnection, 1)
 	client.SetOnConnStart(func(conn ziface.IConnection) {
-		conn.SendMsg(protocol.MsgIdServiceIdentity, []byte("gateway"))
+		conn.SendMsg(protocol.MsgIdServiceIdentity, []byte(conf.SvcGateway))
 		connCh <- conn
 	})
 	client.Start()
@@ -268,7 +269,7 @@ func connectGatewayB(b *testing.B, port int, ch chan receivedMsg) ziface.IConnec
 	client.AddRouter(protocol.MsgIdChatResp, &testRecvRouter{ch: ch})
 	connCh := make(chan ziface.IConnection, 1)
 	client.SetOnConnStart(func(conn ziface.IConnection) {
-		conn.SendMsg(protocol.MsgIdServiceIdentity, []byte("gateway"))
+		conn.SendMsg(protocol.MsgIdServiceIdentity, []byte(conf.SvcGateway))
 		connCh <- conn
 	})
 	client.Start()

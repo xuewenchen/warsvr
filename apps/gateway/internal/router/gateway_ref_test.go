@@ -8,7 +8,7 @@ import (
 func TestBuildRouteIndex(t *testing.T) {
 	cfg := conf.GatewayConfig{
 		Routes: map[string]conf.BackendRoute{
-			"chatsvr": {Forward: []uint32{5}, RouteKey: "playerId"},
+			conf.SvcChatSvr: {Forward: []uint32{5}, RouteKey: "playerId"},
 		},
 	}
 	idx := BuildRouteIndex(cfg)
@@ -19,7 +19,7 @@ func TestBuildRouteIndex(t *testing.T) {
 	if r == nil {
 		t.Fatal("expected route for msgID 5")
 	}
-	if r.Backend != "chatsvr" {
+	if r.Backend != conf.SvcChatSvr {
 		t.Errorf("expected backend chatsvr, got %s", r.Backend)
 	}
 	if r.RouteKey != "playerId" {
@@ -30,21 +30,21 @@ func TestBuildRouteIndex(t *testing.T) {
 func TestBuildRouteIndex_MultipleBackends(t *testing.T) {
 	cfg := conf.GatewayConfig{
 		Routes: map[string]conf.BackendRoute{
-			"chatsvr": {Forward: []uint32{5}, RouteKey: "playerId"},
-			"roomsvr": {Forward: []uint32{7, 8}, RouteKey: "connId"},
+			conf.SvcChatSvr: {Forward: []uint32{5}, RouteKey: "playerId"},
+			conf.SvcRoomSvr: {Forward: []uint32{7, 8}, RouteKey: "connId"},
 		},
 	}
 	idx := BuildRouteIndex(cfg)
 	if len(idx) != 3 {
 		t.Fatalf("expected 3 routes, got %d", len(idx))
 	}
-	if idx[5].Backend != "chatsvr" {
+	if idx[5].Backend != conf.SvcChatSvr {
 		t.Error("msgID 5 should go to chatsvr")
 	}
-	if idx[7].Backend != "roomsvr" {
+	if idx[7].Backend != conf.SvcRoomSvr {
 		t.Error("msgID 7 should go to roomsvr")
 	}
-	if idx[8].Backend != "roomsvr" {
+	if idx[8].Backend != conf.SvcRoomSvr {
 		t.Error("msgID 8 should go to roomsvr")
 	}
 }
@@ -59,9 +59,9 @@ func TestBuildRouteIndex_Empty(t *testing.T) {
 func TestGatewayRef_RouteFor(t *testing.T) {
 	gw := &GatewayRef{}
 	gw.SetRoutes(map[uint32]*BackendRouteInfo{
-		5: {Backend: "chatsvr", RouteKey: "playerId"},
+		5: {Backend: conf.SvcChatSvr, RouteKey: "playerId"},
 	})
-	if r := gw.RouteFor(5); r == nil || r.Backend != "chatsvr" {
+	if r := gw.RouteFor(5); r == nil || r.Backend != conf.SvcChatSvr {
 		t.Error("RouteFor(5) should return chatsvr route")
 	}
 	if r := gw.RouteFor(99); r != nil {

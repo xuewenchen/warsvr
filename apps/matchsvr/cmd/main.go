@@ -20,11 +20,11 @@ func main() {
 		panic(err)
 	}
 
-	cfg := conf.LookupServer(conf.GlobalConfig.Services["matchsvr"], *svrID, "MatchSvr")
+	cfg := conf.LookupServer(conf.GlobalConfig.Services[conf.SvcMatchSvr], *svrID, conf.SvcMatchSvr)
 	host, port := conf.ParseHostPort(cfg.Listen)
 
 	s := pkg.NewServer(&zconf.Config{
-		Name:    "MatchSvr",
+		Name:    conf.SvcMatchSvr,
 		Host:    host,
 		TCPPort: port,
 		Mode:    zconf.ServerModeTcp,

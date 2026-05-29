@@ -19,15 +19,15 @@ func main() {
 		panic(err)
 	}
 
-	cfg := conf.LookupServer(conf.GlobalConfig.Services["roomsvr"], *svrID, "RoomSvr")
+	cfg := conf.LookupServer(conf.GlobalConfig.Services[conf.SvcRoomSvr], *svrID, conf.SvcRoomSvr)
 	host, port := conf.ParseHostPort(cfg.Listen)
 
 	// Dial MatchSvr for room-destroyed notifications
-	reg := pkg.NewRegistry("roomsvr")
-	reg.Dial("matchsvr", nil, pkg.HashRoute)
+	reg := pkg.NewRegistry(conf.SvcRoomSvr)
+	reg.Dial(conf.SvcMatchSvr, nil, pkg.HashRoute)
 
 	s := pkg.NewServer(&zconf.Config{
-		Name:    "RoomSvr",
+		Name:    conf.SvcRoomSvr,
 		Host:    host,
 		TCPPort: port,
 		Mode:    zconf.ServerModeTcp,

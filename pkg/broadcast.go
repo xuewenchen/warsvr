@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"cardwar/pkg/conf"
 	"cardwar/protocol/pb"
 	"strconv"
 
@@ -25,7 +26,7 @@ func NewGateWayBroadcaster(s ziface.IServer) Broadcaster {
 	return &broadcaster{
 		sendToAll: func(msgID uint32, data []byte) {
 			s.GetConnMgr().Range(func(connID uint64, conn ziface.IConnection, extra interface{}) error {
-				if tp, _ := conn.GetProperty("conn_type"); tp == "gateway" {
+				if tp, _ := conn.GetProperty("conn_type"); tp == conf.SvcGateway {
 					conn.SendMsg(msgID, data)
 				}
 				return nil
