@@ -26,7 +26,7 @@ func main() {
 
 	// Dial MatchSvr for room-destroyed notifications
 	reg := pkg.NewRegistry()
-	reg.Dial("matchsvr", nil, pkg.HashRoute, protocol.MsgIdGatewayRegister)
+	reg.Dial("matchsvr", nil, pkg.HashRoute, 0)
 
 	s := znet.NewUserConfServer(&zconf.Config{
 		Name:    "RoomSvr",
