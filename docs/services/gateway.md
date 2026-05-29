@@ -24,10 +24,9 @@ apps/gateway/internal/router/
 | 依赖 | 用途 |
 |---|---|
 | `pkg/auth` | JWT 生成和校验 |
-| `pkg/pool` | 后端连接池（Dial、Route、Sync） |
-| `pkg/registry` | 多后端注册管理 |
-| `pkg/errors` | HTTPError |
-| `conf` | 配置加载、热加载 |
+| `pkg` | 连接池（Dial, Route, Sync）、多后端注册管理、HTTPError |
+| `pkg/conf` | 配置加载、热加载 |
+| `pkg/corouter` | PingRouter（ping→pong） |
 | `protocol` | msgID 常量 |
 | `protocol/pb` | 只用到 `Envelope` 和 `ChatResp`（错误响应） |
 

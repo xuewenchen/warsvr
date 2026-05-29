@@ -34,9 +34,11 @@
 
 | File | Purpose |
 |---|---|
-| `pkg/pool.go` | Backend connection pool: Dial, reconnection, Sync, Add/Remove server |
-| `pkg/pool.go` | `RouteFuncFor(type)` — "hash"/"random"/"direct" selection |
+| `pkg/pool.go` | Backend connection pool: Dial, reconnection, Sync, Add/Remove server; RouteFunc types |
 | `pkg/registry.go` | Multi-backend Registry: Dial, RouteTo, SyncBackend |
+| `pkg/server.go` | `NewServer(cfg)` — wraps znet.NewUserConfServer + auto-registers PingRouter & ServiceIdentityRouter |
+| `pkg/corouter/ping_router.go` | Common PingRouter: ping→pong echo, shared by all backend services |
+| `pkg/corouter/service_identity_router.go` | ServiceIdentityRouter: auto-set conn_type on connect |
 | `pkg/broadcast.go` | Broadcaster: ToAll, ToPlayer, ToConn (filtered by conn_type=gateway) |
 | `pkg/auth/jwt.go` | JWT: GenerateJWT, ValidateJWT (HS256, playerId/user_id) |
 | `pkg/errors.go` | HTTPError, ErrUnauthorized |
@@ -45,8 +47,8 @@
 
 | File | Purpose |
 |---|---|
-| `pkg/conf/config.go` | Config types, Load, LookupServer, ParseHostPort |
-| `conf/watcher.go` | `Watch(path, callback)` — fsnotify hot-reload |
+| `pkg/conf/config.go` | Config types, Load, LookupServer, ParseHostPort, service name constants |
+| `pkg/conf/conf_watcher.go` | `Watch(path, callback)` — fsnotify hot-reload |
 | `config.yml` | Service instances, JWT secret, gateway routes |
 
 ## Protocol

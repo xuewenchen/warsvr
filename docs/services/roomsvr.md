@@ -11,33 +11,23 @@
 ## 目录结构
 
 ```
-apps/roomsvr/cmd/main.go              # 入口：注册 Join/Leave 路由器
+apps/roomsvr/cmd/main.go              # 入口：pkg.NewServer 自动注入 Ping/身份路由
 apps/roomsvr/internal/router/
   room_router.go                       # 房间逻辑：自动创建、加入、离开、自动销毁
-  ping_router.go
-  ping_router.go
 ```
 
 ## 依赖
 
 | 依赖 | 用途 |
 |---|---|
-| `pkg/broadcast` | Broadcaster：玩家进/出时广播给房间其他人 |
+| `pkg` | Broadcaster（玩家进/出时广播）、Registry（Dial MatchSvr） |
+| `pkg/conf` | 服务名常量、configured servers |
 | `protocol` | msgID 常量 |
-| `protocol/pb` | RoomJoinReq/Resp, RoomLeaveReq/Resp, Envelope |
+| `protocol/pb` | RoomJoinReq/Resp, RoomLeaveReq/Resp, RoomDestroyedPush, Envelope |
 
 ## 状态
 
 - `rooms sync.Map` → `matchId → []playerID`（字符串列表，来自 `conn_tags["player_id"]`）
-
-## 依赖
-
-| 依赖 | 用途 |
-|---|---|
-| `pkg/registry` | Dial MatchSvr，房间销毁时发送通知 |
-| `pkg/broadcast` | Broadcaster：玩家进/出时广播给房间其他人 |
-| `protocol` | msgID 常量 |
-| `protocol/pb` | RoomJoinReq/Resp, RoomLeaveReq/Resp, RoomDestroyedPush, Envelope |
 
 ## 启动
 

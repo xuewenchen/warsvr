@@ -14,18 +14,16 @@
 ## 目录结构
 
 ```
-apps/matchsvr/cmd/main.go              # 入口：注册 Enter/Allocate/Query 路由器
+apps/matchsvr/cmd/main.go              # 入口：pkg.NewServer 自动注入 Ping/身份路由
 apps/matchsvr/internal/router/
   match_router.go                       # 匹配逻辑：队列、分配、查询、匹配池
-  ping_router.go
-  ping_router.go
 ```
 
 ## 依赖
 
 | 依赖 | 用途 |
 |---|---|
-| `pkg/broadcast` | Broadcaster（预留，匹配池推送） |
+| `pkg` | Broadcaster（预留，匹配池推送） |
 | `pkg/conf` | 读取 roomsvr 实例列表（负载均衡用） |
 | `protocol` | msgID 常量 |
 | `protocol/pb` | MatchEnterReq/Resp, MatchAllocateReq/Resp, MatchQueryReq/Resp, MatchResultPush |

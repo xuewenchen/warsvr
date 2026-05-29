@@ -13,6 +13,8 @@ scripts\svc.bat <cmd> <instance> [config]
 Uses config.yml instance IDs directly. Prefix auto-detects service type:
 - `cs-*` = ChatSvr
 - `gw-*` = Gateway
+- `matchsvr-*` = MatchSvr
+- `roomsvr-*` = RoomSvr
 
 ### Commands
 
@@ -31,6 +33,8 @@ Uses config.yml instance IDs directly. Prefix auto-detects service type:
 | `cs-1` | ChatSvr instance cs-1 from config |
 | `gw-1` | Gateway instance gw-1 from config |
 | `gw-2` | Gateway instance gw-2 |
+| `matchsvr-1` | MatchSvr instance matchsvr-1 from config |
+| `roomsvr-1` | RoomSvr instance roomsvr-1 from config |
 | `all` | All instances in config.yml |
 
 ### Examples

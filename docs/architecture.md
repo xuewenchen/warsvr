@@ -36,7 +36,7 @@ ChatSvr passively learns `playerId → Gateway connection` from incoming Envelop
 
 ## Gateway Routing
 
-Gateway uses two generic routers, pre-registered for msgIDs 1–1000:
+Gateway uses two generic routers, pre-registered for msgIDs 2–1000 (msgID 1 / Ping is handled by a dedicated `PingRouter`):
 
 - **ForwardRouter**: Looks up config `gateway.routes`, resolves route key from conn properties (`playerId`, `connId`, `server_id`, etc.), wraps in `Envelope{ConnId, Data, ConnTags}`, forwards to backend via `RouteTo(backend, key)`.
 - **ResponseRouter**: Unwraps `Envelope`, applies `conn_tags` to client connection properties, forwards `env.Data` to client. `conn_id=0` = broadcast. `conn_tags["target_player_id"]` = private delivery.
