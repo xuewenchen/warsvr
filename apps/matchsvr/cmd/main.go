@@ -4,13 +4,11 @@ import (
 	"cardwar/apps/matchsvr/internal/router"
 	"cardwar/pkg"
 	"cardwar/pkg/conf"
-	"cardwar/pkg/corouter"
 	"cardwar/protocol"
 	"flag"
 
 	"github.com/aceld/zinx/zconf"
 	"github.com/aceld/zinx/zlog"
-	"github.com/aceld/zinx/znet"
 )
 
 func main() {
@@ -25,15 +23,13 @@ func main() {
 	cfg := conf.LookupServer(conf.GlobalConfig.Services["matchsvr"], *svrID, "MatchSvr")
 	host, port := conf.ParseHostPort(cfg.Listen)
 
-	s := znet.NewUserConfServer(&zconf.Config{
+	s := pkg.NewServer(&zconf.Config{
 		Name:    "MatchSvr",
 		Host:    host,
 		TCPPort: port,
 		Mode:    zconf.ServerModeTcp,
 	})
 
-	s.AddRouter(protocol.MsgIdPing, &router.PingRouter{})
-	s.AddRouter(protocol.MsgIdGatewayRegister, &corouter.GatewayRegisterRouter{})
 	mr := &router.MatchRouter{BC: pkg.NewGateWayBroadcaster(s)}
 	s.AddRouter(protocol.MsgIdMatchEnterReq, mr)
 	s.AddRouter(protocol.MsgIdMatchAllocateReq, mr)

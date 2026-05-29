@@ -66,15 +66,15 @@ Manages backend connections with:
 
 ### `pkg.Broadcaster`
 
-Sends messages to all connected Gateways. Filters by `conn_type="gateway"` property (set via `MsgIdGatewayRegister` on connect). Methods: `ToAll`, `ToPlayer`, `ToConn`.
+Sends messages to all connected Gateways. Filters by `conn_type="gateway"` property (set via `SERVICE_IDENTITY` msgID 1001 on connect). Methods: `ToAll`, `ToPlayer`, `ToConn`.
 
 ### `pkg.Registry`
 
 Multi-backend connection manager:
 ```go
-reg := pkg.NewRegistry()
+reg := pkg.NewRegistry("gateway")
 reg.Dial("chatsvr", routers, pkg.HashRoute)
-reg.SyncBackend("chatsvr", routers, pkg.HashRoute, registerMsgID) // hot-reload
+reg.SyncBackend("chatsvr", routers, pkg.HashRoute) // hot-reload
 conn := reg.RouteTo("chatsvr", key)
 ```
 
@@ -99,7 +99,7 @@ Defined in `protocol/proto/msgid.proto`, Go aliases in `protocol/msgid.go`.
 | 19 | MatchAllocateResp | MatchSvr → Gateway → Client |
 | 20 | MatchQueryReq | Client → Gateway → MatchSvr (lookup match) |
 | 21 | MatchQueryResp | MatchSvr → Gateway → Client |
-| 1000 | GatewayRegister | Gateway → Backend (on connect) |
+| 1001 | ServiceIdentity | Service → Backend (on connect) |
 
 ## Key Types
 

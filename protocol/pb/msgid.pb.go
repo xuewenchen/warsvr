@@ -30,8 +30,8 @@ const (
 	MsgID_PONG               MsgID = 2
 	MsgID_CHAT_REQ           MsgID = 5
 	MsgID_CHAT_RESP          MsgID = 6
-	// 注册信息
-	MsgID_GATEWAY_REGISTER MsgID = 1000
+	// 服务间身份交换
+	MsgID_SERVICE_IDENTITY MsgID = 1001
 	// ===== match pool
 	MsgID_MATCH_ENTER_REQ   MsgID = 11
 	MsgID_MATCH_ENTER_RESP  MsgID = 12
@@ -58,7 +58,7 @@ var (
 		2:    "PONG",
 		5:    "CHAT_REQ",
 		6:    "CHAT_RESP",
-		1000: "GATEWAY_REGISTER",
+		1001: "SERVICE_IDENTITY",
 		11:   "MATCH_ENTER_REQ",
 		12:   "MATCH_ENTER_RESP",
 		13:   "MATCH_RESULT_PUSH",
@@ -79,7 +79,7 @@ var (
 		"PONG":                2,
 		"CHAT_REQ":            5,
 		"CHAT_RESP":           6,
-		"GATEWAY_REGISTER":    1000,
+		"SERVICE_IDENTITY":    1001,
 		"MATCH_ENTER_REQ":     11,
 		"MATCH_ENTER_RESP":    12,
 		"MATCH_RESULT_PUSH":   13,
@@ -134,7 +134,7 @@ const file_msgid_proto_rawDesc = "" +
 	"\x04PONG\x10\x02\x12\f\n" +
 	"\bCHAT_REQ\x10\x05\x12\r\n" +
 	"\tCHAT_RESP\x10\x06\x12\x15\n" +
-	"\x10GATEWAY_REGISTER\x10\xe8\a\x12\x13\n" +
+	"\x10SERVICE_IDENTITY\x10\xe9\a\x12\x13\n" +
 	"\x0fMATCH_ENTER_REQ\x10\v\x12\x14\n" +
 	"\x10MATCH_ENTER_RESP\x10\f\x12\x15\n" +
 	"\x11MATCH_RESULT_PUSH\x10\r\x12\x16\n" +

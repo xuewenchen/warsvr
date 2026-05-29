@@ -11,11 +11,10 @@
 ## 目录结构
 
 ```
-apps/chatsvr/cmd/main.go              # 入口：注册 Ping/Chat/GatewayRegister 路由器
+apps/chatsvr/cmd/main.go              # 入口：注册 Ping/Chat 路由器，pkg.NewServer 自动注入身份路由
 apps/chatsvr/internal/router/
   chat_router.go                       # 聊天逻辑：全局广播、私聊投递+确认
   ping_router.go                       # Ping 回显
-  gateway_register_router.go           # 标记连接为 gateway 类型
 ```
 
 ## 依赖

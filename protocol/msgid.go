@@ -12,7 +12,7 @@ const (
 	// ===== match pool
 	MsgIdMatchEnterReq   = uint32(pb.MsgID_MATCH_ENTER_REQ)
 	MsgIdMatchEnterResp  = uint32(pb.MsgID_MATCH_ENTER_RESP)
-	MsgIdMatchResultPush  = uint32(pb.MsgID_MATCH_RESULT_PUSH)
+	MsgIdMatchResultPush = uint32(pb.MsgID_MATCH_RESULT_PUSH)
 
 	// ===== match directory
 	MsgIdMatchAllocateReq  = uint32(pb.MsgID_MATCH_ALLOCATE_REQ)
@@ -27,9 +27,9 @@ const (
 	MsgIdRoomLeaveResp = uint32(pb.MsgID_ROOM_LEAVE_RESP)
 
 	MsgIdRoomDestroyedPush = uint32(pb.MsgID_ROOM_DESTROYED_PUSH)
-	MsgIdRoomEventPush    = uint32(pb.MsgID_ROOM_EVENT_PUSH)
+	MsgIdRoomEventPush     = uint32(pb.MsgID_ROOM_EVENT_PUSH)
 )
 
 const (
-	MsgIdGatewayRegister = uint32(pb.MsgID_GATEWAY_REGISTER)
+	MsgIdServiceIdentity = uint32(pb.MsgID_SERVICE_IDENTITY)
 )

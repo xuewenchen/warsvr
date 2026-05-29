@@ -5,6 +5,7 @@ import (
 	"cardwar/pkg"
 	"cardwar/pkg/auth"
 	"cardwar/pkg/conf"
+	"cardwar/pkg/corouter"
 	"cardwar/protocol"
 	"flag"
 	"net/http"
@@ -29,7 +30,7 @@ func main() {
 
 	// 初始化网关服务
 	gw := &router.GatewayRef{
-		Registry:    pkg.NewRegistry(),
+		Registry:    pkg.NewRegistry("gateway"),
 		PlayerConns: &sync.Map{},
 	}
 	gw.SetRoutes(routeIndex)
@@ -46,7 +47,7 @@ func main() {
 			for msgID := uint32(1); msgID <= pkg.MaxMsgID; msgID++ {
 				routers = append(routers, pkg.BackendRouterConfig{MsgID: msgID, Router: rspRouter})
 			}
-			gw.SyncBackend(backend, routers, pkg.RouteFuncFor(rc.RouteType), protocol.MsgIdGatewayRegister)
+			gw.SyncBackend(backend, routers, pkg.RouteFuncFor(rc.RouteType))
 		}
 		zlog.Ins().InfoF("Gateway: hot-reloaded (%d msgIDs, %d backends)", len(newIndex), len(cfg.Gateway.Routes))
 	}); err != nil {
@@ -115,7 +116,8 @@ func initWebSocket(gw *router.GatewayRef, gwID string) {
 		zlog.Ins().InfoF("Client disconnected: connID=%d", conn.GetConnID())
 	})
 
-	wsServer.AddRouter(protocol.MsgIdPing, &router.PingRouter{})
+	// 单独注册ping pong路由
+	wsServer.AddRouter(protocol.MsgIdPing, &corouter.PingRouter{})
 
 	// 注册websocket消息转发路由
 	registerForwardRouter(gw)
@@ -128,7 +130,7 @@ func registerResponseRouter(gw *router.GatewayRef, rspRouter *router.ResponseRou
 		for msgID := uint32(1); msgID <= pkg.MaxMsgID; msgID++ {
 			routers = append(routers, pkg.BackendRouterConfig{MsgID: msgID, Router: rspRouter})
 		}
-		gw.Dial(backend, routers, pkg.RouteFuncFor(rc.RouteType), protocol.MsgIdGatewayRegister)
+		gw.Dial(backend, routers, pkg.RouteFuncFor(rc.RouteType))
 	}
 }
 

@@ -22,12 +22,6 @@ type receivedMsg struct {
 	data  []byte
 }
 
-type testRegisterRouter struct{ znet.BaseRouter }
-
-func (r *testRegisterRouter) Handle(req ziface.IRequest) {
-	req.GetConnection().SetProperty("conn_type", "gateway")
-}
-
 type testRecvRouter struct {
 	znet.BaseRouter
 	ch chan receivedMsg
@@ -39,10 +33,9 @@ func (r *testRecvRouter) Handle(req ziface.IRequest) {
 
 func startTestServer(t *testing.T, port int) ziface.IServer {
 	t.Helper()
-	s := znet.NewUserConfServer(&zconf.Config{
+	s := NewServer(&zconf.Config{
 		Name: "test-backend", Host: "127.0.0.1", TCPPort: port, Mode: zconf.ServerModeTcp,
 	})
-	s.AddRouter(protocol.MsgIdGatewayRegister, &testRegisterRouter{})
 	s.Start()
 	time.Sleep(100 * time.Millisecond)
 	return s
@@ -54,7 +47,7 @@ func connectGateway(t *testing.T, port int, ch chan receivedMsg) ziface.IConnect
 	client.AddRouter(protocol.MsgIdChatResp, &testRecvRouter{ch: ch})
 	connCh := make(chan ziface.IConnection, 1)
 	client.SetOnConnStart(func(conn ziface.IConnection) {
-		conn.SendMsg(protocol.MsgIdGatewayRegister, []byte{})
+		conn.SendMsg(protocol.MsgIdServiceIdentity, []byte("gateway"))
 		connCh <- conn
 	})
 	client.Start()
@@ -262,10 +255,9 @@ func BenchmarkBroadcastTo_10Gateways(b *testing.B) {
 }
 
 func startTestServerB(b *testing.B, port int) ziface.IServer {
-	s := znet.NewUserConfServer(&zconf.Config{
+	s := NewServer(&zconf.Config{
 		Name: "test-backend", Host: "127.0.0.1", TCPPort: port, Mode: zconf.ServerModeTcp,
 	})
-	s.AddRouter(protocol.MsgIdGatewayRegister, &testRegisterRouter{})
 	s.Start()
 	time.Sleep(100 * time.Millisecond)
 	return s
@@ -276,7 +268,7 @@ func connectGatewayB(b *testing.B, port int, ch chan receivedMsg) ziface.IConnec
 	client.AddRouter(protocol.MsgIdChatResp, &testRecvRouter{ch: ch})
 	connCh := make(chan ziface.IConnection, 1)
 	client.SetOnConnStart(func(conn ziface.IConnection) {
-		conn.SendMsg(protocol.MsgIdGatewayRegister, []byte{})
+		conn.SendMsg(protocol.MsgIdServiceIdentity, []byte("gateway"))
 		connCh <- conn
 	})
 	client.Start()

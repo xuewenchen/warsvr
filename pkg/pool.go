@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"cardwar/pkg/conf"
+	"cardwar/protocol"
 
 	"github.com/aceld/zinx/ziface"
 	"github.com/aceld/zinx/zlog"
@@ -74,9 +75,9 @@ func RandomRoute(key string, healthy []ziface.IConnection) ziface.IConnection {
 
 // connEntry holds a single backend connection with reconnect state.
 type connEntry struct {
-	addr          string
-	routers       []BackendRouterConfig
-	registerMsgID uint32
+	addr     string
+	routers  []BackendRouterConfig
+	identity string // caller's service identity (e.g. "gateway"), sent on connect
 
 	mu           sync.Mutex
 	conn         ziface.IConnection
@@ -113,7 +114,7 @@ func NewPool(conns []ziface.IConnection, servers []conf.ServerNode, routers []Ba
 // Dial connects to all configured instances of a backend service and returns a Pool.
 // The service name matches the key in config.yml services section.
 // Routers are registered on every connection. routeFn determines how Route() picks a connection.
-func Dial(service string, routers []BackendRouterConfig, routeFn RouteFunc, registerMsgID uint32) *Pool {
+func Dial(service string, routers []BackendRouterConfig, routeFn RouteFunc, identity string) *Pool {
 	servers := conf.GlobalConfig.Services[service]
 	if len(servers) == 0 {
 		panic("no " + service + " configured")
@@ -133,8 +134,8 @@ func Dial(service string, routers []BackendRouterConfig, routeFn RouteFunc, regi
 		client := znet.NewClient(host, port)
 
 		client.SetOnConnStart(func(conn ziface.IConnection) {
-			if registerMsgID != 0 {
-				conn.SendMsg(registerMsgID, []byte{})
+			if identity != "" {
+				conn.SendMsg(protocol.MsgIdServiceIdentity, []byte(identity))
 			}
 			pool.conns[idx].mu.Lock()
 			pool.conns[idx].conn = conn
@@ -154,11 +155,11 @@ func Dial(service string, routers []BackendRouterConfig, routeFn RouteFunc, regi
 		}
 
 		pool.conns[idx] = &connEntry{
-			addr:          srv.Listen,
-			routers:       routers,
-			registerMsgID: registerMsgID,
-			healthy:       false,
-			backoff:       time.Second,
+			addr:     srv.Listen,
+			routers:  routers,
+			identity: identity,
+			healthy:  false,
+			backoff:  time.Second,
 		}
 
 		wg.Add(1)
@@ -190,14 +191,14 @@ func (p *Pool) Route(key string) ziface.IConnection {
 
 // AddServer connects to a single new server and appends it to the pool.
 // Blocks until the first connection succeeds or times out.
-func (p *Pool) AddServer(srv conf.ServerNode, service string, routers []BackendRouterConfig, routeFn RouteFunc, registerMsgID uint32) {
+func (p *Pool) AddServer(srv conf.ServerNode, service string, routers []BackendRouterConfig, routeFn RouteFunc, identity string) {
 	p.mu.Lock()
 	idx := len(p.conns)
 	entry := &connEntry{
-		addr:          srv.Listen,
-		routers:       routers,
-		registerMsgID: registerMsgID,
-		backoff:       reconnectInitBackoff,
+		addr:     srv.Listen,
+		routers:  routers,
+		identity: identity,
+		backoff:  reconnectInitBackoff,
 	}
 	p.conns = append(p.conns, entry)
 	p.routeFn = routeFn
@@ -209,8 +210,8 @@ func (p *Pool) AddServer(srv conf.ServerNode, service string, routers []BackendR
 	var wg sync.WaitGroup
 	wg.Add(1)
 	client.SetOnConnStart(func(conn ziface.IConnection) {
-		if registerMsgID != 0 {
-			conn.SendMsg(registerMsgID, []byte{})
+		if identity != "" {
+			conn.SendMsg(protocol.MsgIdServiceIdentity, []byte(identity))
 		}
 		entry.mu.Lock()
 		if !entry.stopped {
@@ -281,7 +282,7 @@ func (p *Pool) ServerAddrs() []string {
 }
 
 // Sync adds new servers and removes old ones to match the given server list.
-func (p *Pool) Sync(servers []conf.ServerNode, service string, routers []BackendRouterConfig, routeFn RouteFunc, registerMsgID uint32) {
+func (p *Pool) Sync(servers []conf.ServerNode, service string, routers []BackendRouterConfig, routeFn RouteFunc, identity string) {
 	current := make(map[string]bool)
 	for _, addr := range p.ServerAddrs() {
 		current[addr] = true
@@ -295,7 +296,7 @@ func (p *Pool) Sync(servers []conf.ServerNode, service string, routers []Backend
 	for addr, srv := range wanted {
 		if !current[addr] {
 			zlog.Ins().InfoF("Pool: syncing new server %s[%s] at %s", service, srv.ID, addr)
-			p.AddServer(srv, service, routers, routeFn, registerMsgID)
+			p.AddServer(srv, service, routers, routeFn, identity)
 		}
 	}
 
@@ -365,8 +366,8 @@ func (p *Pool) reconnectLoop(idx int) {
 		connCh := make(chan ziface.IConnection, 1)
 
 		client.SetOnConnStart(func(conn ziface.IConnection) {
-			if e.registerMsgID != 0 {
-				conn.SendMsg(e.registerMsgID, []byte{})
+			if e.identity != "" {
+				conn.SendMsg(protocol.MsgIdServiceIdentity, []byte(e.identity))
 			}
 			zlog.Ins().InfoF("Pool: reconnected to %s", e.addr)
 			connCh <- conn

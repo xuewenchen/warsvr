@@ -12,16 +12,20 @@ import (
 type Registry struct {
 	mu       sync.RWMutex
 	backends map[string]BackendPool
+	identity string // e.g. "gateway", "roomsvr" — auto-sent on connect
 }
 
-// NewRegistry creates a new Registry.
-func NewRegistry() *Registry {
-	return &Registry{backends: make(map[string]BackendPool)}
+// NewRegistry creates a new Registry. identity is the caller's service type
+// (e.g. "gateway", "roomsvr"), automatically exchanged on each Dial connection.
+func NewRegistry(identity string) *Registry {
+	return &Registry{backends: make(map[string]BackendPool), identity: identity}
 }
 
 // Dial connects to all configured instances of a backend service and stores the pool.
-func (r *Registry) Dial(service string, routers []BackendRouterConfig, routeFn RouteFunc, registerMsgID uint32) {
-	pool := Dial(service, routers, routeFn, registerMsgID)
+// The Registry's identity is automatically sent on each connection so the backend
+// can identify the caller.
+func (r *Registry) Dial(service string, routers []BackendRouterConfig, routeFn RouteFunc) {
+	pool := Dial(service, routers, routeFn, r.identity)
 	r.mu.Lock()
 	r.backends[service] = pool
 	r.mu.Unlock()
@@ -39,7 +43,7 @@ func (r *Registry) RouteTo(backend, key string) ziface.IConnection {
 }
 
 // SyncBackend adds new servers and removes old ones for a backend service.
-func (r *Registry) SyncBackend(service string, routers []BackendRouterConfig, routeFn RouteFunc, registerMsgID uint32) {
+func (r *Registry) SyncBackend(service string, routers []BackendRouterConfig, routeFn RouteFunc) {
 	servers := conf.GlobalConfig.Services[service]
 	r.mu.RLock()
 	pool := r.backends[service]
@@ -48,6 +52,6 @@ func (r *Registry) SyncBackend(service string, routers []BackendRouterConfig, ro
 		return
 	}
 	if p, ok := pool.(*Pool); ok {
-		p.Sync(servers, service, routers, routeFn, registerMsgID)
+		p.Sync(servers, service, routers, routeFn, r.identity)
 	}
 }

@@ -4,10 +4,10 @@ services:
       tcp_listen: 0.0.0.0:9000
       ws_listen: 0.0.0.0:9001
       public_addr: 127.0.0.1:9000
-    # - id: gw-2
-    #   tcp_listen: 0.0.0.0:9002
-    #   ws_listen: 0.0.0.0:9003
-    #   public_addr: 127.0.0.1:9002
+    - id: gw-2
+      tcp_listen: 0.0.0.0:9002
+      ws_listen: 0.0.0.0:9003
+      public_addr: 127.0.0.1:9002
 
   chatsvr:
     - id: cs-1

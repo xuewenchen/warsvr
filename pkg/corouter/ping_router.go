@@ -1,4 +1,4 @@
-package router
+package corouter
 
 import (
 	"cardwar/protocol"
@@ -7,6 +7,7 @@ import (
 	"github.com/aceld/zinx/znet"
 )
 
+// PingRouter responds to MsgIdPing with MsgIdPong.
 type PingRouter struct {
 	znet.BaseRouter
 }

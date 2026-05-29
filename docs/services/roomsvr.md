@@ -15,7 +15,7 @@ apps/roomsvr/cmd/main.go              # 入口：注册 Join/Leave 路由器
 apps/roomsvr/internal/router/
   room_router.go                       # 房间逻辑：自动创建、加入、离开、自动销毁
   ping_router.go
-  gateway_register_router.go
+  ping_router.go
 ```
 
 ## 依赖

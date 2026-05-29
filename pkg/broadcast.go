@@ -20,7 +20,7 @@ type broadcaster struct {
 }
 
 // NewGateWayBroadcaster creates a Broadcaster that sends to all Gateway connections
-// registered on the given server (via MsgIdGatewayRegister).
+// registered on the given server (via MsgIdServiceIdentity).
 func NewGateWayBroadcaster(s ziface.IServer) Broadcaster {
 	return &broadcaster{
 		sendToAll: func(msgID uint32, data []byte) {

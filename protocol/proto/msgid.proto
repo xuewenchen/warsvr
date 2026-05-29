@@ -12,8 +12,8 @@ enum MsgID {
   CHAT_RESP = 6;
 
 
-  // 注册信息
-  GATEWAY_REGISTER = 1000;
+  // 服务间身份交换
+  SERVICE_IDENTITY = 1001;
 
   // ===== match pool
   MATCH_ENTER_REQ = 11;

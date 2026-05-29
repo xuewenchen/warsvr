@@ -4,12 +4,10 @@ import (
 	"cardwar/apps/roomsvr/internal/router"
 	"cardwar/pkg"
 	"cardwar/pkg/conf"
-	"cardwar/pkg/corouter"
 	"cardwar/protocol"
 	"flag"
 
 	"github.com/aceld/zinx/zconf"
-	"github.com/aceld/zinx/znet"
 )
 
 func main() {
@@ -25,10 +23,10 @@ func main() {
 	host, port := conf.ParseHostPort(cfg.Listen)
 
 	// Dial MatchSvr for room-destroyed notifications
-	reg := pkg.NewRegistry()
-	reg.Dial("matchsvr", nil, pkg.HashRoute, 0)
+	reg := pkg.NewRegistry("roomsvr")
+	reg.Dial("matchsvr", nil, pkg.HashRoute)
 
-	s := znet.NewUserConfServer(&zconf.Config{
+	s := pkg.NewServer(&zconf.Config{
 		Name:    "RoomSvr",
 		Host:    host,
 		TCPPort: port,
@@ -36,8 +34,6 @@ func main() {
 	})
 
 	rr := &router.RoomRouter{BC: pkg.NewGateWayBroadcaster(s), Reg: reg}
-	s.AddRouter(protocol.MsgIdPing, &router.PingRouter{})
-	s.AddRouter(protocol.MsgIdGatewayRegister, &corouter.GatewayRegisterRouter{})
 	s.AddRouter(protocol.MsgIdRoomJoinReq, rr)
 	s.AddRouter(protocol.MsgIdRoomLeaveReq, rr)
 
