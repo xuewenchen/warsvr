@@ -1,4 +1,4 @@
-package router
+package corouter
 
 import (
 	"github.com/aceld/zinx/ziface"
@@ -9,6 +9,7 @@ type GatewayRegisterRouter struct {
 	znet.BaseRouter
 }
 
+// 设置链接类型是gateway
 func (r *GatewayRegisterRouter) Handle(request ziface.IRequest) {
 	request.GetConnection().SetProperty("conn_type", "gateway")
 }

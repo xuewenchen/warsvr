@@ -22,6 +22,7 @@ var (
 	loadCounts    sync.Map // serverId → int
 )
 
+// 匹配目录
 type matchDir struct {
 	ServerID  string
 	MatchType string

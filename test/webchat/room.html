@@ -46,7 +46,8 @@
 </div>
 
 <div class="bar">
-  <label>Room:</label><input id="roomName" value="lobby" size="12" placeholder="room name">
+  <span style="font-size:11px;color:#888">[Room]</span>
+  <input id="roomName" value="lobby" size="12" placeholder="room name">
   <button id="btnCreate" onclick="doCreateRoom()" disabled>Create Room</button>
   <button id="btnJoin" onclick="doJoinRoom()" disabled>Join Room</button>
   <button id="btnLeave" class="leave" onclick="doLeaveRoom()" disabled>Leave Room</button>
@@ -56,6 +57,7 @@
 <div class="log" id="log"></div>
 
 <div class="input-row">
+  <span style="font-size:11px;color:#888">[Chat]</span>
   <input id="msgInput" placeholder="Chat message..." onkeydown="if(event.key==='Enter') doChat(false)" disabled>
   <input id="targetId" class="short" value="2" placeholder="target" disabled>
   <button id="btnGlobal" onclick="doChat(false)" disabled>Global</button>
@@ -117,10 +119,10 @@ async function doConnect(){
   log('Connecting as player '+pid+'...','sys');
   var token=await genJWT(pid);
   ws=new WebSocket('ws://'+host+'/ws?token='+encodeURIComponent(token)); ws.binaryType='arraybuffer';
-  ws.onopen=function(){setOnline(true);log('Connected as Player '+pid,'sys');enableUI(true)};
+  ws.onopen=function(){setOnline(true);log('Connected as Player '+pid,'sys');enableRoomUI(true);enableChatUI(true)};
   ws.onerror=function(){setOnline(false);log('WS error','err')};
   ws.onmessage=function(e){var f=unpack(e.data);if(f)handleMsg(f.msgId,f.body)};
-  ws.onclose=function(){setOnline(false);log('Disconnected','err');enableUI(false);currentRoom='';currentServer='';updateRoomUI()};
+  ws.onclose=function(){setOnline(false);log('Disconnected','err');enableRoomUI(false);enableChatUI(false);currentRoom='';currentServer='';updateRoomUI()};
 }
 
 function doDisconnect(){if(ws)ws.close();ws=null}
@@ -149,7 +151,7 @@ function doLeaveRoom(){
 }
 
 function doChat(isPrivate){
-  if(!ws||ws.readyState!==WebSocket.OPEN||!currentRoom)return;
+  if(!ws||ws.readyState!==WebSocket.OPEN)return;
   var inp=document.getElementById('msgInput'), content=inp.value.trim(); if(!content)return;
   var target=isPrivate?Number(document.getElementById('targetId').value):0;
   var req=ChatReq.encode(ChatReq.create({content:content,targetPlayerId:target})).finish();
@@ -195,11 +197,13 @@ function joinRoom(matchId){
 
 // ---- UI ----
 function setOnline(on){var e=document.getElementById('status');e.textContent=on?'online':'offline';e.className=on?'':'off'}
-function enableUI(on){
+function enableRoomUI(on){
   document.getElementById('btnCreate').disabled=!on;document.getElementById('btnJoin').disabled=!on;
+  document.getElementById('btnConn').disabled=on;
+}
+function enableChatUI(on){
   document.getElementById('msgInput').disabled=!on;document.getElementById('targetId').disabled=!on;
   document.getElementById('btnGlobal').disabled=!on;document.getElementById('btnPrivate').disabled=!on;
-  document.getElementById('btnConn').disabled=on;
 }
 function updateRoomUI(){
   var r=document.getElementById('roomStatus'), b=document.getElementById('btnLeave');

@@ -4,6 +4,7 @@ import (
 	"cardwar/apps/matchsvr/internal/router"
 	"cardwar/pkg"
 	"cardwar/pkg/conf"
+	"cardwar/pkg/corouter"
 	"cardwar/protocol"
 	"flag"
 
@@ -32,7 +33,7 @@ func main() {
 	})
 
 	s.AddRouter(protocol.MsgIdPing, &router.PingRouter{})
-	s.AddRouter(protocol.MsgIdGatewayRegister, &router.GatewayRegisterRouter{})
+	s.AddRouter(protocol.MsgIdGatewayRegister, &corouter.GatewayRegisterRouter{})
 	mr := &router.MatchRouter{BC: pkg.NewGateWayBroadcaster(s)}
 	s.AddRouter(protocol.MsgIdMatchEnterReq, mr)
 	s.AddRouter(protocol.MsgIdMatchAllocateReq, mr)

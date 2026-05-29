@@ -32,5 +32,5 @@ message ChatResp {
 message Envelope {
   uint64 conn_id = 1;
   bytes  data    = 2;
-  map<string, string> conn_tags = 3;
+  map<string, string> conn_tags = 3; // 附着在发包回包的额外数据
 }

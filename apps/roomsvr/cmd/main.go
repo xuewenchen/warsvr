@@ -4,6 +4,7 @@ import (
 	"cardwar/apps/roomsvr/internal/router"
 	"cardwar/pkg"
 	"cardwar/pkg/conf"
+	"cardwar/pkg/corouter"
 	"cardwar/protocol"
 	"flag"
 
@@ -36,7 +37,7 @@ func main() {
 
 	rr := &router.RoomRouter{BC: pkg.NewGateWayBroadcaster(s), Reg: reg}
 	s.AddRouter(protocol.MsgIdPing, &router.PingRouter{})
-	s.AddRouter(protocol.MsgIdGatewayRegister, &router.GatewayRegisterRouter{})
+	s.AddRouter(protocol.MsgIdGatewayRegister, &corouter.GatewayRegisterRouter{})
 	s.AddRouter(protocol.MsgIdRoomJoinReq, rr)
 	s.AddRouter(protocol.MsgIdRoomLeaveReq, rr)
 
