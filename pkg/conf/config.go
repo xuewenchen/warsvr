@@ -2,9 +2,9 @@ package conf
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"strconv"
-	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -26,7 +26,7 @@ type Config struct {
 }
 
 // ServicesConfig maps backend names to their server node lists.
-// Keys are service names defined by the Svc* constants above.
+// Keys are service names defined by the Svc* constants in svc_define.go.
 type ServicesConfig map[string][]ServerNode
 
 type ServerNode struct {
@@ -38,15 +38,15 @@ type ServerNode struct {
 }
 
 func ParseHostPort(addr string) (string, int) {
-	parts := strings.Split(addr, ":")
-	if len(parts) != 2 {
+	host, portStr, err := net.SplitHostPort(addr)
+	if err != nil {
 		panic("invalid address: " + addr)
 	}
-	port, err := strconv.Atoi(parts[1])
+	port, err := strconv.Atoi(portStr)
 	if err != nil {
 		panic("invalid port: " + addr)
 	}
-	return parts[0], port
+	return host, port
 }
 
 // LookupServer finds a ServerNode by ID from the given list. If id is empty, returns the first entry.

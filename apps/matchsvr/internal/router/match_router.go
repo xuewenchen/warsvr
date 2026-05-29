@@ -43,13 +43,20 @@ type MatchRouter struct {
 }
 
 func (r *MatchRouter) Handle(request ziface.IRequest) {
+	msgID := request.GetMsgID()
+
+	// SessionForceLeaveQueue comes as raw SessionData, not wrapped in Envelope
+	if msgID == protocol.MsgIdSessionForceLeaveQueue {
+		r.handleForceLeaveQueue(request)
+		return
+	}
+
 	var env pb.Envelope
 	if err := proto.Unmarshal(request.GetData(), &env); err != nil {
 		zlog.Error(err)
 		return
 	}
 
-	msgID := request.GetMsgID()
 	switch msgID {
 	case protocol.MsgIdMatchEnterReq:
 		r.handleEnter(&env, request.GetConnection())
@@ -267,6 +274,29 @@ func decLoad(serverID string) {
 			loadCounts.Delete(serverID)
 		} else {
 			loadCounts.Store(serverID, count)
+		}
+	}
+}
+
+// handleForceLeaveQueue removes a player from the match queue when SessionSvr TTL expires.
+func (r *MatchRouter) handleForceLeaveQueue(request ziface.IRequest) {
+	var data pb.SessionData
+	if err := proto.Unmarshal(request.GetData(), &data); err != nil {
+		zlog.Error(err)
+		return
+	}
+	matchType := data.ConnTags["match_type"]
+	raw, ok := queues.Load(matchType)
+	if !ok {
+		return
+	}
+	pool := raw.([]queuedPlayer)
+	for i, p := range pool {
+		if p.playerID == data.PlayerId {
+			pool = append(pool[:i], pool[i+1:]...)
+			queues.Store(matchType, pool)
+			zlog.Ins().InfoF("MatchSvr: removed player %d from queue %s (TTL expired)", data.PlayerId, matchType)
+			return
 		}
 	}
 }

@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package pb;
+option go_package = "cardwar/protocol/pb";
+
+message SessionData {
+  int64 player_id = 1;
+  string gateway_id = 2;
+  map<string, string> conn_tags = 3;
+  int64 disconnected_at = 4;  // unix timestamp, 0 = connected
+}

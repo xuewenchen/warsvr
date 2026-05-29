@@ -5,6 +5,7 @@ import (
 	"cardwar/pkg/conf"
 	"cardwar/protocol"
 	"cardwar/protocol/pb"
+	"strconv"
 	"sync"
 
 	"github.com/aceld/zinx/ziface"
@@ -40,6 +41,10 @@ func (r *RoomRouter) Handle(request ziface.IRequest) {
 		r.handleJoin(&env, request.GetConnection())
 	case protocol.MsgIdRoomLeaveReq:
 		r.handleLeave(&env, request.GetConnection())
+	case protocol.MsgIdSessionReconnected:
+		r.handleReconnected(request)
+	case protocol.MsgIdSessionForceLeave:
+		r.handleForceLeave(request)
 	}
 }
 
@@ -156,4 +161,75 @@ func (r *RoomRouter) broadcastRoomEvent(matchId string, members []roomPlayer, pl
 	for _, p := range members {
 		r.BC.ToConn(protocol.MsgIdRoomEventPush, p.senderID, push, p.conn)
 	}
+}
+
+// handleReconnected updates a room player's connection reference after reconnection.
+// Called when Gateway notifies that a player has reconnected within TTL.
+func (r *RoomRouter) handleReconnected(request ziface.IRequest) {
+	var data pb.SessionData
+	if err := proto.Unmarshal(request.GetData(), &data); err != nil {
+		zlog.Error(err)
+		return
+	}
+	matchID := data.ConnTags["match_id"]
+	playerID := data.ConnTags["player_id"]
+	senderID, _ := strconv.ParseUint(data.ConnTags["sender_id"], 10, 64)
+
+	raw, ok := rooms.Load(matchID)
+	if !ok {
+		return
+	}
+	players := raw.([]roomPlayer)
+	for i, p := range players {
+		if p.playerID == playerID {
+			players[i].conn = request.GetConnection()
+			players[i].senderID = senderID
+			rooms.Store(matchID, players)
+			zlog.Ins().InfoF("RoomSvr: player %s reconnected in room %s", playerID, matchID)
+			return
+		}
+	}
+}
+
+// handleForceLeave removes a player from a room when SessionSvr's TTL expires.
+func (r *RoomRouter) handleForceLeave(request ziface.IRequest) {
+	var data pb.SessionData
+	if err := proto.Unmarshal(request.GetData(), &data); err != nil {
+		zlog.Error(err)
+		return
+	}
+	matchID := data.ConnTags["match_id"]
+	playerID := strconv.FormatInt(data.PlayerId, 10)
+
+	raw, ok := rooms.Load(matchID)
+	if !ok {
+		return
+	}
+	players := raw.([]roomPlayer)
+	idx := -1
+	for i, p := range players {
+		if p.playerID == playerID {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return
+	}
+	leftPlayer := players[idx]
+	players = append(players[:idx], players[idx+1:]...)
+
+	if len(players) == 0 {
+		rooms.Delete(matchID)
+		r.notifyMatchSvr(matchID)
+		zlog.Ins().InfoF("RoomSvr: room %s destroyed (player %s force-left, TTL expired)", matchID, playerID)
+	} else {
+		rooms.Store(matchID, players)
+		r.broadcastRoomEvent(matchID, players, playerID, "left", len(players))
+	}
+
+	// Send leave response to the leaving player via the original gateway conn
+	resp, _ := proto.Marshal(&pb.RoomLeaveResp{Success: true})
+	env, _ := proto.Marshal(&pb.Envelope{ConnId: leftPlayer.senderID, Data: resp})
+	request.GetConnection().SendMsg(protocol.MsgIdRoomLeaveResp, env)
 }

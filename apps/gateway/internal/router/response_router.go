@@ -73,4 +73,6 @@ func (r *ResponseRouter) applyConnTags(conn ziface.IConnection, tags map[string]
 		pid, _ := strconv.ParseInt(pidStr, 10, 64)
 		r.GW.PlayerConns.Store(pid, conn.GetConnID())
 	}
+	// Sync connection tags to SessionSvr for reconnection support
+	r.GW.SyncSessionTags(conn)
 }

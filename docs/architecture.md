@@ -6,7 +6,8 @@
 Client A ───> Gateway-1 ──┐
 Client B ───> Gateway-2 ──┼──> ChatSvr (TCP)
 Client C ───> Gateway-1 ──┤──> MatchSvr (TCP)
-                            └──> RoomSvr (TCP)
+                            ├──> RoomSvr (TCP)
+                            └──> SessionSvr (TCP)
 ```
 
 Multiple Gateway instances connect to each backend. Each Gateway `Dial`s every backend, creating TCP client connections. From the backend's perspective, each Gateway is an incoming connection in `Server.GetConnMgr()`.
@@ -100,6 +101,21 @@ Defined in `protocol/proto/msgid.proto`, Go aliases in `protocol/msgid.go`.
 | 20 | MatchQueryReq | Client → Gateway → MatchSvr (lookup match) |
 | 21 | MatchQueryResp | MatchSvr → Gateway → Client |
 | 1001 | ServiceIdentity | Service → Backend (on connect) |
+| 1002 | SessionSave | Gateway → SessionSvr (sync conn_tags) |
+| 1003 | SessionGet | Gateway → SessionSvr (query session) |
+| 1004 | SessionDisconnect | Gateway → SessionSvr (mark disconnected) |
+| 1005 | SessionReconnect | Gateway → SessionSvr (mark reconnected) |
+| 1006 | SessionForceLeave | SessionSvr → RoomSvr (TTL expired) |
+| 1007 | SessionForceLeaveQueue | SessionSvr → MatchSvr (TTL expired) |
+| 1008 | SessionReconnected | Gateway → RoomSvr (update conn ref) |
+
+### Session Reconnection
+
+On disconnect, Gateway marks the player's session in SessionSvr (120s TTL)
+without deleting state. On reconnect within TTL, Gateway restores connection
+properties (server_id, match_id) and notifies RoomSvr to update stale conn
+references. If TTL expires, SessionSvr sends cleanup messages to RoomSvr
+(force leave room) and MatchSvr (force leave queue).
 
 ## Key Types
 

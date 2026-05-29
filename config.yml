@@ -25,6 +25,11 @@ services:
       listen: 0.0.0.0:8006
       public_addr: 127.0.0.1:8006
   
+  sessionsvr:
+    - id: sessionsvr-1
+      listen: 0.0.0.0:8008
+      public_addr: 127.0.0.1:8008
+
   matchsvr:
     - id: matchsvr-1
       listen: 0.0.0.0:8004

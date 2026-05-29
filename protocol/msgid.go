@@ -28,6 +28,15 @@ const (
 
 	MsgIdRoomDestroyedPush = uint32(pb.MsgID_ROOM_DESTROYED_PUSH)
 	MsgIdRoomEventPush     = uint32(pb.MsgID_ROOM_EVENT_PUSH)
+
+	// ===== session
+	MsgIdSessionSave            = uint32(pb.MsgID_SESSION_SAVE)
+	MsgIdSessionGet             = uint32(pb.MsgID_SESSION_GET)
+	MsgIdSessionDisconnect      = uint32(pb.MsgID_SESSION_DISCONNECT)
+	MsgIdSessionReconnect       = uint32(pb.MsgID_SESSION_RECONNECT)
+	MsgIdSessionForceLeave      = uint32(pb.MsgID_SESSION_FORCE_LEAVE)
+	MsgIdSessionForceLeaveQueue = uint32(pb.MsgID_SESSION_FORCE_LEAVE_QUEUE)
+	MsgIdSessionReconnected     = uint32(pb.MsgID_SESSION_RECONNECTED)
 )
 
 const (

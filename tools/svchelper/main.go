@@ -117,7 +117,7 @@ func handleQuery(args []string) {
 		if node == nil {
 			os.Exit(1)
 		}
-		_, p := parseHostPort(listenAddr(node))
+		_, p := conf.ParseHostPort(listenAddr(node))
 		fmt.Println(p)
 
 	case "jwt":
@@ -218,7 +218,7 @@ func doStart(target, configPath string) {
 		fmt.Fprintf(os.Stderr, "ERROR: instance %q not found in config\n", target)
 		os.Exit(1)
 	}
-	_, port := parseHostPort(listenAddr(node))
+	_, port := conf.ParseHostPort(listenAddr(node))
 	startOne(svc, target, port, configPath)
 }
 
@@ -285,7 +285,7 @@ func doStop(target string) {
 		fmt.Fprintf(os.Stderr, "ERROR: instance %q not found in config\n", target)
 		os.Exit(1)
 	}
-	_, port := parseHostPort(listenAddr(node))
+	_, port := conf.ParseHostPort(listenAddr(node))
 	killByPort(port, svc)
 }
 
@@ -317,7 +317,7 @@ func listInstances() []instance {
 			if n.ID == "" {
 				continue
 			}
-			_, p := parseHostPort(listenAddr(&n))
+			_, p := conf.ParseHostPort(listenAddr(&n))
 			inst := instance{svc: svcName, id: n.ID, port: p}
 			if svcName == conf.SvcGateway {
 				gateways = append(gateways, inst)
@@ -345,15 +345,6 @@ func findServiceNode(id string) (string, *conf.ServerNode) {
 		}
 	}
 	return "", nil
-}
-
-func parseHostPort(addr string) (string, int) {
-	parts := strings.Split(addr, ":")
-	if len(parts) != 2 {
-		return "", 0
-	}
-	port, _ := strconv.Atoi(parts[1])
-	return parts[0], port
 }
 
 // portOccupied checks if a TCP port is currently listening.
@@ -402,7 +393,7 @@ func showStatus() {
 			if n.ID == "" {
 				continue
 			}
-			_, p := parseHostPort(listenAddr(&n))
+			_, p := conf.ParseHostPort(listenAddr(&n))
 			pid := findPIDByPort(p)
 			portPid[p] = pid
 			if pid > 0 {
@@ -456,10 +447,10 @@ func listInstancesOrdered() []svcInstance {
 		for _, n := range nodes {
 			inst := svcInstance{id: n.ID, svc: svcName}
 			if svcName == conf.SvcGateway {
-				_, inst.wsPort = parseHostPort(n.WSListen)
-				_, inst.tcpPort = parseHostPort(n.TCPListen)
+				_, inst.wsPort = conf.ParseHostPort(n.WSListen)
+				_, inst.tcpPort = conf.ParseHostPort(n.TCPListen)
 			} else {
-				_, inst.port = parseHostPort(n.Listen)
+				_, inst.port = conf.ParseHostPort(n.Listen)
 			}
 			if svcName == conf.SvcGateway {
 				gateways = append(gateways, inst)
@@ -496,10 +487,10 @@ func listInstancesOf(svc string) []svcInstance {
 	for _, n := range nodes {
 		inst := svcInstance{id: n.ID, svc: svc}
 		if svc == conf.SvcGateway {
-			_, inst.wsPort = parseHostPort(n.WSListen)
-			_, inst.tcpPort = parseHostPort(n.TCPListen)
+			_, inst.wsPort = conf.ParseHostPort(n.WSListen)
+			_, inst.tcpPort = conf.ParseHostPort(n.TCPListen)
 		} else {
-			_, inst.port = parseHostPort(n.Listen)
+			_, inst.port = conf.ParseHostPort(n.Listen)
 		}
 		list = append(list, inst)
 	}

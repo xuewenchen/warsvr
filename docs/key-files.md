@@ -7,7 +7,9 @@
 | `apps/gateway/cmd/main.go` | Entrypoint: JWT auth, backend Dial, route setup, hot-reload |
 | `apps/gateway/internal/router/gateway_ref.go` | GatewayRef, BackendRouteInfo, BuildRouteIndex |
 | `apps/gateway/internal/router/forward_router.go` | Generic client→backend forwarding, route key resolution |
-| `apps/gateway/internal/router/response_router.go` | Generic backend→client response handling, conn_tags application |
+| `apps/gateway/internal/router/response_router.go` | Generic backend→client response handling, conn_tags + session sync |
+| `apps/gateway/internal/router/reconnect.go` | Reconnect logic: CheckReconnect, MarkDisconnected, SyncSessionTags |
+| `apps/gateway/internal/router/session_response.go` | SessionSvr response handler (SessionGet, SessionReconnect) |
 
 ## ChatSvr
 
@@ -29,6 +31,14 @@
 |---|---|
 | `apps/roomsvr/cmd/main.go` | Entrypoint |
 | `apps/roomsvr/internal/router/room_router.go` | Room lifecycle: auto-create on join, auto-destroy on empty |
+
+## SessionSvr
+
+| File | Purpose |
+|---|---|
+| `apps/sessionsvr/cmd/main.go` | Entrypoint: Dial RoomSvr/MatchSvr, start TTL scanner |
+| `apps/sessionsvr/internal/router/session_router.go` | SessionSave/Get/Disconnect/Reconnect handlers |
+| `apps/sessionsvr/internal/router/expiry.go` | TTL scanner + force-leave cleanup |
 
 ## Shared Libraries
 

@@ -34,4 +34,13 @@ enum MsgID {
 
   ROOM_DESTROYED_PUSH = 22; // RoomSvr → MatchSvr (internal)
   ROOM_EVENT_PUSH = 23;     // RoomSvr → Client (joined/left broadcast)
+
+  // ===== session (disconnect / reconnect)
+  SESSION_SAVE = 1002;              // Gateway → SessionSvr: sync conn_tags
+  SESSION_GET = 1003;               // Gateway → SessionSvr: query session
+  SESSION_DISCONNECT = 1004;        // Gateway → SessionSvr: mark disconnected
+  SESSION_RECONNECT = 1005;         // Gateway → SessionSvr: mark reconnected
+  SESSION_FORCE_LEAVE = 1006;       // SessionSvr → RoomSvr: TTL expired, force leave room
+  SESSION_FORCE_LEAVE_QUEUE = 1007; // SessionSvr → MatchSvr: TTL expired, force leave queue
+  SESSION_RECONNECTED = 1008;       // Gateway → RoomSvr: player reconnected, update conn
 }

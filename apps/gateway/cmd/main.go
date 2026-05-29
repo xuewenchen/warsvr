@@ -17,6 +17,11 @@ import (
 	"github.com/aceld/zinx/znet"
 )
 
+var sessionRouters = []pkg.BackendRouterConfig{
+	{MsgID: protocol.MsgIdSessionGet, Router: &router.SessionResponseRouter{}},
+	{MsgID: protocol.MsgIdSessionReconnect, Router: &router.SessionResponseRouter{}},
+}
+
 func main() {
 	configPath := flag.String("conf", "config.yml", "path to config file")
 	gwID := flag.String("id", "", "Gateway ID (matches config services.gateway[].id)")
@@ -28,14 +33,17 @@ func main() {
 
 	routeIndex := router.BuildRouteIndex(conf.GlobalConfig.Gateway)
 
-	// 初始化网关服务
 	gw := &router.GatewayRef{
 		Registry:    pkg.NewRegistry(conf.SvcGateway),
 		PlayerConns: &sync.Map{},
 	}
 	gw.SetRoutes(routeIndex)
 
-	// 注册TCP响应路由
+	// Wire GW reference into session response routers
+	for _, rc := range sessionRouters {
+		rc.Router.(*router.SessionResponseRouter).GW = gw
+	}
+
 	rspRouter := &router.ResponseRouter{GW: gw}
 	registerResponseRouter(gw, rspRouter)
 
@@ -49,6 +57,7 @@ func main() {
 			}
 			gw.SyncBackend(backend, routers, pkg.RouteFuncFor(rc.RouteType))
 		}
+		gw.SyncBackend(conf.SvcSessionSvr, sessionRouters, pkg.HashRoute)
 		zlog.Ins().InfoF("Gateway: hot-reloaded (%d msgIDs, %d backends)", len(newIndex), len(cfg.Gateway.Routes))
 	}); err != nil {
 		zlog.Ins().ErrorF("Gateway: config watch failed: %v", err)
@@ -58,6 +67,7 @@ func main() {
 	gw.Server.Serve()
 }
 
+// 初始化websocket服务器，设置认证、连接管理和消息路由
 func initWebSocket(gw *router.GatewayRef, gwID string) {
 	gwCfg := conf.LookupServer(conf.GlobalConfig.Services[conf.SvcGateway], gwID, conf.SvcGateway)
 	jwtSecret := conf.GlobalConfig.Gateway.JWTSecret
@@ -76,9 +86,9 @@ func initWebSocket(gw *router.GatewayRef, gwID string) {
 	wsServer := znet.NewUserConfServer(serverCfg)
 	gw.Server = wsServer
 
-	var pendingAuths sync.Map // remoteAddr -> playerId (passes JWT result from websocketAuth to OnConnStart)
+	var pendingAuths sync.Map
 
-	// 鉴权
+	// 设置鉴权
 	wsServer.SetWebsocketAuth(func(r *http.Request) error {
 		token := r.URL.Query().Get("token")
 		if token == "" {
@@ -94,7 +104,7 @@ func initWebSocket(gw *router.GatewayRef, gwID string) {
 		return nil
 	})
 
-	// 建立链接
+	// 设置客户端链接启动
 	wsServer.SetOnConnStart(func(conn ziface.IConnection) {
 		addr := conn.RemoteAddr().String()
 		val, ok := pendingAuths.LoadAndDelete(addr)
@@ -107,23 +117,27 @@ func initWebSocket(gw *router.GatewayRef, gwID string) {
 		conn.SetProperty("playerId", playerID)
 		gw.PlayerConns.Store(playerID, conn.GetConnID())
 		zlog.Ins().InfoF("Client connected: connID=%d, player=%d, addr=%s", conn.GetConnID(), playerID, addr)
+
+		gw.CheckReconnect(playerID, conn)
 	})
 
+	// 设置玩家链接断开
 	wsServer.SetOnConnStop(func(conn ziface.IConnection) {
-		if pid, err := conn.GetProperty("playerId"); err == nil {
-			gw.PlayerConns.Delete(pid)
+		if pidVal, err := conn.GetProperty("playerId"); err == nil {
+			if pid, ok := pidVal.(int64); ok {
+				gw.PlayerConns.Delete(pid)
+				gw.MarkDisconnected(pid)
+			}
 		}
 		zlog.Ins().InfoF("Client disconnected: connID=%d", conn.GetConnID())
 	})
 
-	// 单独注册ping pong路由
 	wsServer.AddRouter(protocol.MsgIdPing, &corouter.PingRouter{})
 
-	// 注册websocket消息转发路由
 	registerForwardRouter(gw)
 }
 
-// 注册backend TCP响应路由，负责将后端服务的响应消息转发给正确的客户端连接
+// 注册响应路由
 func registerResponseRouter(gw *router.GatewayRef, rspRouter *router.ResponseRouter) {
 	for backend, rc := range conf.GlobalConfig.Gateway.Routes {
 		routers := make([]pkg.BackendRouterConfig, 0, pkg.MaxMsgID)
@@ -132,14 +146,15 @@ func registerResponseRouter(gw *router.GatewayRef, rspRouter *router.ResponseRou
 		}
 		gw.Dial(backend, routers, pkg.RouteFuncFor(rc.RouteType))
 	}
+	gw.Dial(conf.SvcSessionSvr, sessionRouters, pkg.HashRoute)
 }
 
-// 注册websocket消息应该转发到哪个后端服务
+// 注册转发路由
 func registerForwardRouter(gw *router.GatewayRef) {
 	fwdRouter := &router.ForwardRouter{GW: gw}
 	for msgID := uint32(1); msgID <= pkg.MaxMsgID; msgID++ {
 		if msgID == protocol.MsgIdPing {
-			continue // Ping is handled locally
+			continue
 		}
 		gw.Server.AddRouter(msgID, fwdRouter)
 	}

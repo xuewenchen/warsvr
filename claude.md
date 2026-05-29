@@ -18,6 +18,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | **ChatSvr** | Chat processing, global/private broadcast | `route_type: hash` |
 | **MatchSvr** | Matchmaking pool + roomsvr directory | `route_type: hash` |
 | **RoomSvr** | Room lifecycle (auto-create, auto-destroy) | `route_type: direct` |
+| **SessionSvr** | Player session persistence, TTL cleanup on disconnect | `route_type: hash` |
 
 ### Quick Start
 
@@ -25,6 +26,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 scripts\svc.bat build all
 scripts\svc.bat start cs-1
 scripts\svc.bat start gw-1
+scripts\svc.bat start sessionsvr-1
 scripts\svc.bat start matchsvr-1
 scripts\svc.bat start roomsvr-1
 scripts\svc.bat status    # cluster topology
@@ -38,6 +40,7 @@ scripts\svc.bat status    # cluster topology
 | [docs/services/chatsvr.md](docs/services/chatsvr.md) | ChatSvr: global/private chat, broadcast |
 | [docs/services/matchsvr.md](docs/services/matchsvr.md) | MatchSvr: pool queue, allocation, directory |
 | [docs/services/roomsvr.md](docs/services/roomsvr.md) | RoomSvr: room lifecycle, auto-create/destroy |
+| [docs/services/sessionsvr.md](docs/services/sessionsvr.md) | SessionSvr: session persistence, disconnect/reconnect, TTL cleanup |
 | [docs/architecture.md](docs/architecture.md) | Overall topology, message flow, key types |
 | [docs/matchmaking.md](docs/matchmaking.md) | MatchSvr + RoomSvr full flows |
 | [docs/configuration.md](docs/configuration.md) | config.yml reference |

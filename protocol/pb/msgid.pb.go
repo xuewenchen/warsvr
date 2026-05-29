@@ -48,6 +48,14 @@ const (
 	MsgID_ROOM_LEAVE_RESP     MsgID = 17
 	MsgID_ROOM_DESTROYED_PUSH MsgID = 22 // RoomSvr → MatchSvr (internal)
 	MsgID_ROOM_EVENT_PUSH     MsgID = 23 // RoomSvr → Client (joined/left broadcast)
+	// ===== session (disconnect / reconnect)
+	MsgID_SESSION_SAVE              MsgID = 1002 // Gateway → SessionSvr: sync conn_tags
+	MsgID_SESSION_GET               MsgID = 1003 // Gateway → SessionSvr: query session
+	MsgID_SESSION_DISCONNECT        MsgID = 1004 // Gateway → SessionSvr: mark disconnected
+	MsgID_SESSION_RECONNECT         MsgID = 1005 // Gateway → SessionSvr: mark reconnected
+	MsgID_SESSION_FORCE_LEAVE       MsgID = 1006 // SessionSvr → RoomSvr: TTL expired, force leave room
+	MsgID_SESSION_FORCE_LEAVE_QUEUE MsgID = 1007 // SessionSvr → MatchSvr: TTL expired, force leave queue
+	MsgID_SESSION_RECONNECTED       MsgID = 1008 // Gateway → RoomSvr: player reconnected, update conn
 )
 
 // Enum value maps for MsgID.
@@ -72,27 +80,41 @@ var (
 		17:   "ROOM_LEAVE_RESP",
 		22:   "ROOM_DESTROYED_PUSH",
 		23:   "ROOM_EVENT_PUSH",
+		1002: "SESSION_SAVE",
+		1003: "SESSION_GET",
+		1004: "SESSION_DISCONNECT",
+		1005: "SESSION_RECONNECT",
+		1006: "SESSION_FORCE_LEAVE",
+		1007: "SESSION_FORCE_LEAVE_QUEUE",
+		1008: "SESSION_RECONNECTED",
 	}
 	MsgID_value = map[string]int32{
-		"MSG_ID_UNSPECIFIED":  0,
-		"PING":                1,
-		"PONG":                2,
-		"CHAT_REQ":            5,
-		"CHAT_RESP":           6,
-		"SERVICE_IDENTITY":    1001,
-		"MATCH_ENTER_REQ":     11,
-		"MATCH_ENTER_RESP":    12,
-		"MATCH_RESULT_PUSH":   13,
-		"MATCH_ALLOCATE_REQ":  18,
-		"MATCH_ALLOCATE_RESP": 19,
-		"MATCH_QUERY_REQ":     20,
-		"MATCH_QUERY_RESP":    21,
-		"ROOM_JOIN_REQ":       14,
-		"ROOM_JOIN_RESP":      15,
-		"ROOM_LEAVE_REQ":      16,
-		"ROOM_LEAVE_RESP":     17,
-		"ROOM_DESTROYED_PUSH": 22,
-		"ROOM_EVENT_PUSH":     23,
+		"MSG_ID_UNSPECIFIED":        0,
+		"PING":                      1,
+		"PONG":                      2,
+		"CHAT_REQ":                  5,
+		"CHAT_RESP":                 6,
+		"SERVICE_IDENTITY":          1001,
+		"MATCH_ENTER_REQ":           11,
+		"MATCH_ENTER_RESP":          12,
+		"MATCH_RESULT_PUSH":         13,
+		"MATCH_ALLOCATE_REQ":        18,
+		"MATCH_ALLOCATE_RESP":       19,
+		"MATCH_QUERY_REQ":           20,
+		"MATCH_QUERY_RESP":          21,
+		"ROOM_JOIN_REQ":             14,
+		"ROOM_JOIN_RESP":            15,
+		"ROOM_LEAVE_REQ":            16,
+		"ROOM_LEAVE_RESP":           17,
+		"ROOM_DESTROYED_PUSH":       22,
+		"ROOM_EVENT_PUSH":           23,
+		"SESSION_SAVE":              1002,
+		"SESSION_GET":               1003,
+		"SESSION_DISCONNECT":        1004,
+		"SESSION_RECONNECT":         1005,
+		"SESSION_FORCE_LEAVE":       1006,
+		"SESSION_FORCE_LEAVE_QUEUE": 1007,
+		"SESSION_RECONNECTED":       1008,
 	}
 )
 
@@ -127,7 +149,7 @@ var File_msgid_proto protoreflect.FileDescriptor
 
 const file_msgid_proto_rawDesc = "" +
 	"\n" +
-	"\vmsgid.proto\x12\x02pb*\x83\x03\n" +
+	"\vmsgid.proto\x12\x02pb*\xad\x04\n" +
 	"\x05MsgID\x12\x16\n" +
 	"\x12MSG_ID_UNSPECIFIED\x10\x00\x12\b\n" +
 	"\x04PING\x10\x01\x12\b\n" +
@@ -147,7 +169,14 @@ const file_msgid_proto_rawDesc = "" +
 	"\x0eROOM_LEAVE_REQ\x10\x10\x12\x13\n" +
 	"\x0fROOM_LEAVE_RESP\x10\x11\x12\x17\n" +
 	"\x13ROOM_DESTROYED_PUSH\x10\x16\x12\x13\n" +
-	"\x0fROOM_EVENT_PUSH\x10\x17B\x15Z\x13cardwar/protocol/pbb\x06proto3"
+	"\x0fROOM_EVENT_PUSH\x10\x17\x12\x11\n" +
+	"\fSESSION_SAVE\x10\xea\a\x12\x10\n" +
+	"\vSESSION_GET\x10\xeb\a\x12\x17\n" +
+	"\x12SESSION_DISCONNECT\x10\xec\a\x12\x16\n" +
+	"\x11SESSION_RECONNECT\x10\xed\a\x12\x18\n" +
+	"\x13SESSION_FORCE_LEAVE\x10\xee\a\x12\x1e\n" +
+	"\x19SESSION_FORCE_LEAVE_QUEUE\x10\xef\a\x12\x18\n" +
+	"\x13SESSION_RECONNECTED\x10\xf0\aB\x15Z\x13cardwar/protocol/pbb\x06proto3"
 
 var (
 	file_msgid_proto_rawDescOnce sync.Once
