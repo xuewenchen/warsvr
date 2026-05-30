@@ -1,6 +1,6 @@
 # SessionSvr
 
-## 
+## 功能
 
 Player session persistence — handles disconnect/reconnect and TTL-based cleanup.
 
@@ -9,7 +9,7 @@ Player session persistence — handles disconnect/reconnect and TTL-based cleanu
 - **Reconnect within TTL (120s)**: Gateway restores conn_tags, notifies RoomSvr to update stale conn reference
 - **TTL expiry**: SessionSvr sends force-leave messages to RoomSvr and MatchSvr, then deletes session
 
-## 
+## 目录结构
 
 ```
 apps/sessionsvr/cmd/main.go                                # Entrypoint: Dial RoomSvr/MatchSvr, start TTL scanner
@@ -18,7 +18,7 @@ apps/sessionsvr/internal/router/
   expiry.go                                                 # TTL scanner + force-leave cleanup
 ```
 
-## 
+## 依赖
 
 |  |  |
 |---|---|
@@ -31,13 +31,13 @@ apps/sessionsvr/internal/router/
 - `sessions sync.Map`  `playerId(int64)  *Session`
 - `Session.PlayerID`, `GatewayID`, `ConnTags`, `DisconnectedAt` (0=connected)
 
-## 
+## 启动
 
 ```bash
 scripts\svc.bat start sessionsvr-1
 ```
 
-## 
+## 交互流程
 
 ### Connect (normal)
 

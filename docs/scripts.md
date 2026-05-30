@@ -15,6 +15,7 @@ Uses config.yml instance IDs directly. Prefix auto-detects service type:
 - `gw-*` = Gateway
 - `matchsvr-*` = MatchSvr
 - `roomsvr-*` = RoomSvr
+- `sessionsvr-*` = SessionSvr
 
 ### Commands
 
@@ -35,6 +36,7 @@ Uses config.yml instance IDs directly. Prefix auto-detects service type:
 | `gw-2` | Gateway instance gw-2 |
 | `matchsvr-1` | MatchSvr instance matchsvr-1 from config |
 | `roomsvr-1` | RoomSvr instance roomsvr-1 from config |
+| `sessionsvr-1` | SessionSvr instance sessionsvr-1 from config |
 | `all` | All instances in config.yml |
 
 ### Examples

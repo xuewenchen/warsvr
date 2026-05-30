@@ -87,7 +87,8 @@
       "Bash(cp apps/matchsvr/internal/router/gateway_register_router.go apps/roomsvr/internal/router/)",
       "Bash(protoc --proto_path=protocol/proto --go_out=protocol/pb --go_opt=paths=source_relative protocol/proto/match.proto protocol/proto/msgid.proto)",
       "Bash(awk '{print $5, $NF}')",
-      "Bash(protoc --go_out=../pb --go_opt=paths=source_relative msgid.proto)"
+      "Bash(protoc --go_out=../pb --go_opt=paths=source_relative msgid.proto)",
+      "Bash(git checkout *)"
     ]
   }
 }

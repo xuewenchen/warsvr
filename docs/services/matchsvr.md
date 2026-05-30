@@ -26,7 +26,7 @@ apps/matchsvr/internal/router/
 | `pkg` | Broadcaster（预留，匹配池推送） |
 | `pkg/conf` | 读取 roomsvr 实例列表（负载均衡用） |
 | `protocol` | msgID 常量 |
-| `protocol/pb` | MatchEnterReq/Resp, MatchAllocateReq/Resp, MatchQueryReq/Resp, MatchResultPush |
+| `protocol/pb` | MatchEnterReq/Resp, MatchAllocateReq/Resp, MatchQueryReq/Resp, MatchResultPush, SessionData |
 
 ## 状态
 
@@ -95,6 +95,19 @@ MatchRouter.handleQuery:
     conn_tags: {"server_id":"roomsvr-1", "match_id":"room-lobby"}
   → Gateway: conn.SetProperty("server_id", "roomsvr-1")
 ```
+
+### TTL 强制离队（SessionSvr 通知）
+
+```
+SessionSvr → SessionForceLeaveQueue{player_id, match_type} → MatchSvr
+
+MatchRouter.handleForceLeaveQueue:
+  queues.Load(matchType) → pool
+  遍历 pool 按 playerID 匹配 → 移除
+  → queues.Store(matchType, updatedPool)
+```
+
+当玩家断线超过 120s TTL，SessionSvr 主动通知 MatchSvr 将其从匹配队列中移除。
 
 ## 与 Gateway 的配置
 

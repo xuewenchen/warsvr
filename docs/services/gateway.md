@@ -17,6 +17,8 @@ apps/gateway/internal/router/
   gateway_ref.go                       # GatewayRef（共享状态）, BackendRouteInfo, BuildRouteIndex
   forward_router.go                    # 泛化转发路由器：查路由表 → 打包 Envelope → RouteTo
   response_router.go                   # 泛化响应路由器：解包 Envelope → 应用 conn_tags → 投递
+  reconnect.go                         # 断线重连逻辑：CheckReconnect, MarkDisconnected, SyncSessionTags
+  session_response.go                  # SessionSvr 响应处理器（SessionGet, SessionReconnect）
 ```
 
 ## 依赖
@@ -28,7 +30,44 @@ apps/gateway/internal/router/
 | `pkg/conf` | 配置加载、热加载 |
 | `pkg/corouter` | PingRouter（ping→pong） |
 | `protocol` | msgID 常量 |
-| `protocol/pb` | 只用到 `Envelope` 和 `ChatResp`（错误响应） |
+| `protocol/pb` | Envelope, ChatResp（错误响应）, SessionData |
+| `pkg/conf` | 服务名常量（`SvcSessionSvr` 等） |
+
+### 断线重连（Session）
+
+Gateway 连接建立后通过 SessionSvr 实现断线重连。核心是**断线不删 session，120s TTL 内重连可恢复状态**。
+
+**流程图：**
+
+```
+连接时 (OnConnStart):
+  → CheckReconnect(playerID, conn)
+    → SessionGet → SessionSvr 返回已存在的 session?
+      → 有: HandleSessionGet
+        → disconnectedAt != 0 (断线状态) → 恢复 conn_tags → 通知 RoomSvr 更新 conn 引用
+        → disconnectedAt == 0 (在线状态) → SyncSessionTags 覆盖
+      → 无: 正常新连接
+
+断开时 (OnConnStop):
+  → MarkDisconnected(playerID)
+    → SessionDisconnect → SessionSvr 标记 disconnectedAt=now（不删除！）
+
+后端响应后 (ResponseRouter.applyConnTags):
+  → conn_tags 有 server_id / match_id / match_type → SyncSessionTags → SessionSave
+```
+
+**conn_tags 同步逻辑：**
+
+每次后端响应（如 MatchAllocateResp、MatchResultPush）通过 `ResponseRouter` 设置了新的 `conn_tags`（`server_id`、`match_id`）后，Gateway 自动调用 `SyncSessionTags` 把当前连接的关键属性推送到 SessionSvr。这样断线时 SessionSvr 持有完整的上下文（玩家在哪个房间、哪个服务器），TTL 过期时可精确通知 RoomSvr/MatchSvr 清理。
+
+**重连恢复后的通知：**
+
+Gateway 发现 `disconnectedAt != 0`（旧会话存在且处于断线状态）时：
+1. 恢复旧 `conn_tags` 到新 WebSocket 连接（`server_id`、`match_id` 等）
+2. 通知 SessionSvr 清除断线标记：`SessionReconnect`
+3. 通知 RoomSvr 更新 `roomPlayer` 中的 conn 引用：`SessionReconnected`
+   - RoomSvr 用新连接替换旧的 Gateway 连接引用
+   - 更新 `senderID`（新的 WebSocket connID）
 
 ## 启动
 

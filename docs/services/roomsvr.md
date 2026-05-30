@@ -5,29 +5,32 @@
 房间服务——管理房间生命周期。
 
 - **自动创建**：`RoomJoinReq` 到一个不存在的 matchId 时自动创建房间
-- **加入/离开**：玩家进出房间，维护玩家列表
-- **自动销毁**：最后一人离开时销毁房间（后续会通知 MatchSvr 删目录记录）
+- **加入/离开**：玩家进出房间，维护玩家列表（含 Gateway 连接引用）
+- **自动销毁**：最后一人离开时销毁房间，通知 MatchSvr 删除目录记录
+- **断线重连**：接收 Gateway 重连通知，更新房间内玩家的连接引用
+- **TTL 强制清理**：接收 SessionSvr 强制离开通知
 
 ## 目录结构
 
 ```
 apps/roomsvr/cmd/main.go              # 入口：pkg.NewServer 自动注入 Ping/身份路由
 apps/roomsvr/internal/router/
-  room_router.go                       # 房间逻辑：自动创建、加入、离开、自动销毁
+  room_router.go                       # 房间逻辑：自动创建、加入、离开、自动销毁、重连、强制清理
 ```
 
 ## 依赖
 
 | 依赖 | 用途 |
 |---|---|
-| `pkg` | Broadcaster（玩家进/出时广播）、Registry（Dial MatchSvr） |
+| `pkg` | Broadcaster（玩家进/出/事件广播）、Registry（Dial MatchSvr 通知销毁） |
 | `pkg/conf` | 服务名常量、configured servers |
 | `protocol` | msgID 常量 |
-| `protocol/pb` | RoomJoinReq/Resp, RoomLeaveReq/Resp, RoomDestroyedPush, Envelope |
+| `protocol/pb` | RoomJoinReq/Resp, RoomLeaveReq/Resp, RoomDestroyedPush, RoomEventPush, SessionData, Envelope |
 
 ## 状态
 
-- `rooms sync.Map` → `matchId → []playerID`（字符串列表，来自 `conn_tags["player_id"]`）
+- `rooms sync.Map` → `matchId → []roomPlayer`
+  - `roomPlayer{playerID string, conn ziface.IConnection, senderID uint64}` — playerID 标识玩家，conn 为 Gateway 连接引用（重连时会更新），senderID 为客户端 connID（Envelope 路由用）
 
 ## 启动
 
@@ -114,8 +117,37 @@ RoomRouter.handleLeave:
 
   → resp: RoomLeaveResp{success:true}
   → log: "room-lobby destroyed (empty)"
-  // TODO: 通知 MatchSvr 删除 activeMatches["room-lobby"]
+  → notifyMatchSvr: RouteTo("matchsvr", matchID) → RoomDestroyedPush
 ```
+
+### 断线重连（Gateway 通知）
+
+```
+Gateway → SessionReconnected{player_id, match_id, sender_id} → RoomSvr
+
+RoomRouter.handleReconnected:
+  rooms.Load(matchID) → [{player-123, oldConn, oldSenderID}]
+  匹配 playerID → 更新 conn = request.GetConnection()（新 Gateway 连接）
+  更新 senderID = 新的客户端 connID
+  → rooms.Store(matchID, updatedPlayers)
+```
+
+重连只更新内部引用（conn、senderID），不广播事件——其他玩家不关心内部状态变化。
+
+### TTL 强制离开（SessionSvr 通知）
+
+```
+SessionSvr → SessionForceLeave{player_id, match_id} → RoomSvr
+
+RoomRouter.handleForceLeave:
+  rooms.Load(matchID) → 移除该 playerID
+  players 非空 → broadcastRoomEvent("left") → 剩余玩家收到离开通知
+  players 为空 → rooms.Delete + notifyMatchSvr → 房间销毁
+```
+
+### 房间事件广播
+
+玩家进出时，向已有成员广播 `RoomEventPush{match_id, player_id, event("joined"/"left"), player_count}`。通过 `BC.ToConn` 精准投递到每个成员的 Gateway 连接。
 
 ## 与 MatchSvr 的关系
 
