@@ -48,5 +48,5 @@ gateway:
       route_type: hash
     roomsvr:
       forward: [14, 16]
-      route_key: server_id
+      route_key: room_server_id
       route_type: direct
