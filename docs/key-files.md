@@ -5,11 +5,11 @@
 | File | Purpose |
 |---|---|
 | `apps/gateway/cmd/main.go` | Entrypoint: JWT auth, backend Dial, route setup, hot-reload |
-| `apps/gateway/internal/router/gateway_ref.go` | GatewayRef, BackendRouteInfo, BuildRouteIndex |
+| `apps/gateway/internal/router/gateway_ref.go` | GatewayRef, BackendRouteInfo, BuildRouteIndex, DialSessionSvr/SyncSessionSvr |
 | `apps/gateway/internal/router/forward_router.go` | Generic client→backend forwarding, route key resolution |
 | `apps/gateway/internal/router/response_router.go` | Generic backend→client response handling, conn_tags + session sync |
 | `apps/gateway/internal/router/reconnect.go` | Reconnect logic: CheckReconnect, MarkDisconnected, SyncSessionTags |
-| `apps/gateway/internal/router/session_response.go` | SessionSvr response handler (SessionGet, SessionReconnect) |
+| `apps/gateway/internal/router/session_router.go` | SessionSvr response handler (SessionGet, SessionReconnect) |
 
 ## ChatSvr
 
@@ -59,6 +59,7 @@
 |---|---|
 | `pkg/conf/config.go` | Config types, Load, LookupServer, ParseHostPort, service name constants |
 | `pkg/conf/conf_watcher.go` | `Watch(path, callback)` — fsnotify hot-reload |
+| `pkg/conn_tags.go` | Well-known conn property / conn_tags key constants (Prop*, Tag*, SyncTagKeys) |
 | `config.yml` | Service instances, JWT secret, gateway routes |
 
 ## Protocol

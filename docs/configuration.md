@@ -16,7 +16,7 @@ gateway:                     # GatewayConfig
   routes:                    # map of backend → BackendRoute
     <backend>:
       forward: [...]         # client→backend msgIDs
-      route_key: <key>       # "connId", "playerId", "server_id", or any conn property
+      route_key: <key>       # "connId", "playerId", "room_server_id", or any conn property
       route_type: <type>     # "hash" (default), "random", "direct"
 ```
 
@@ -53,7 +53,7 @@ type BackendRoute struct {
 |---|---|---|
 | `hash` | `FNV32(key) % len(healthy)` — consistent per key | Stateless services (chatsvr, matchsvr) |
 | `random` | `rand.Intn(len(healthy))` — no affinity | Stateless, no session needed |
-| `direct` | Iterate healthy, find `conn.GetProperty("server_id") == key` | Stateful (roomsvr): client/upstream sets which instance |
+| `direct` | Iterate healthy, find `conn.GetProperty("server_id") == key` | Stateful (roomsvr): client/upstream sets `room_server_id` conn property |
 
 ## Full Example
 
@@ -97,7 +97,7 @@ gateway:
       route_type: hash
     roomsvr:
       forward: [14, 16]
-      route_key: server_id
+      route_key: room_server_id
       route_type: direct
 ```
 

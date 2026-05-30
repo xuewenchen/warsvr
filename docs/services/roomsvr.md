@@ -47,7 +47,7 @@ gateway:
   routes:
     roomsvr:
       forward: [14, 16]        # room join, room leave
-      route_key: server_id     # MatchSvr 分配时设在连接上
+      route_key: room_server_id     # MatchSvr 分配时设在连接上
       route_type: direct       # 精准匹配 server_id
 ```
 
@@ -57,7 +57,7 @@ gateway:
 
 ```
 Client → RoomJoinReq{match_id:"room-lobby"} → Gateway → RoomSvr
-  (route_key: server_id="roomsvr-1" → DirectRoute)
+  (route_key: room_server_id="roomsvr-1" → DirectRoute)
 
 RoomRouter.handleJoin:
   senderPID = env.ConnTags["player_id"]    // "player-123"
@@ -74,7 +74,7 @@ RoomRouter.handleJoin:
 
 ```
 Client B → RoomJoinReq{match_id:"room-lobby"} → Gateway → RoomSvr
-  (route_key: server_id="roomsvr-1" → DirectRoute)
+  (route_key: room_server_id="roomsvr-1" → DirectRoute)
 
 RoomRouter.handleJoin:
   senderPID = env.ConnTags["player_id"]    // "player-456"

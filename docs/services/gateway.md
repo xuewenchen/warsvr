@@ -14,11 +14,11 @@
 ```
 apps/gateway/cmd/main.go              # 入口：JWT auth, Dial backends, 启动 WS 服务
 apps/gateway/internal/router/
-  gateway_ref.go                       # GatewayRef（共享状态）, BackendRouteInfo, BuildRouteIndex
+  gateway_ref.go                       # GatewayRef（共享状态，含 ID、DialSessionSvr/SyncSessionSvr）, BackendRouteInfo, BuildRouteIndex
   forward_router.go                    # 泛化转发路由器：查路由表 → 打包 Envelope → RouteTo
   response_router.go                   # 泛化响应路由器：解包 Envelope → 应用 conn_tags → 投递
   reconnect.go                         # 断线重连逻辑：CheckReconnect, MarkDisconnected, SyncSessionTags
-  session_response.go                  # SessionSvr 响应处理器（SessionGet, SessionReconnect）
+  session_router.go                    # SessionSvr 响应处理器（SessionGet, SessionReconnect）
 ```
 
 ## 依赖
@@ -87,6 +87,8 @@ Client ── ws://host:9000/ws?token=<JWT> ──> Gateway
     → 有效: 提取 playerId → pendingAuths[RemoteAddr] = playerId
   → OnConnStart: playerId → conn.SetProperty("playerId", playerId)
     → gw.PlayerConns.Store(playerId, connID)
+    → gw.CheckReconnect(playerID, conn)  # 查询 SessionSvr 是否有旧会话
+  → OnConnStop: MarkDisconnected(pid)     # 标记断线但不删 session，等待重连
 ```
 
 ### 客户端发消息 → 后端

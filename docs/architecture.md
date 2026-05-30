@@ -39,7 +39,7 @@ ChatSvr passively learns `playerId → Gateway connection` from incoming Envelop
 
 Gateway uses two generic routers, pre-registered for msgIDs 2–1000 (msgID 1 / Ping is handled by a dedicated `PingRouter`):
 
-- **ForwardRouter**: Looks up config `gateway.routes`, resolves route key from conn properties (`playerId`, `connId`, `server_id`, etc.), wraps in `Envelope{ConnId, Data, ConnTags}`, forwards to backend via `RouteTo(backend, key)`.
+- **ForwardRouter**: Looks up config `gateway.routes`, resolves route key from conn properties (`playerId`, `connId`, `room_server_id`, etc.), wraps in `Envelope{ConnId, Data, ConnTags}`, forwards to backend via `RouteTo(backend, key)`.
 - **ResponseRouter**: Unwraps `Envelope`, applies `conn_tags` to client connection properties, forwards `env.Data` to client. `conn_id=0` = broadcast. `conn_tags["target_player_id"]` = private delivery.
 
 Route types:
@@ -48,7 +48,7 @@ Route types:
 |---|---|---|
 | `hash` | `RouteTo(backend, key)` → hash key across N connections | stateless (chatsvr, matchsvr) |
 | `random` | Pick any healthy connection randomly | stateless, no affinity |
-| `direct` | Match `conn.GetProperty("server_id")` == route key | stateful (roomsvr): client sets `server_id`, Gateway routes to exact instance |
+| `direct` | Match `conn.GetProperty("server_id")` == route key | stateful (roomsvr): MatchSvr sets `room_server_id` on client conn, ForwardRouter passes it as key, DirectRoute matches backend conn |
 
 ### Config hot-reload
 
@@ -113,13 +113,13 @@ Defined in `protocol/proto/msgid.proto`, Go aliases in `protocol/msgid.go`.
 
 On disconnect, Gateway marks the player's session in SessionSvr (120s TTL)
 without deleting state. On reconnect within TTL, Gateway restores connection
-properties (server_id, match_id) and notifies RoomSvr to update stale conn
+properties (room_server_id, match_id) and notifies RoomSvr to update stale conn
 references. If TTL expires, SessionSvr sends cleanup messages to RoomSvr
 (force leave room) and MatchSvr (force leave queue).
 
 ## Key Types
 
-- **`pb.Envelope`**: Internal wrapper. `conn_id` (0=broadcast), `data`, `conn_tags` (metadata). `conn_tags["player_id"]` auto-injected by ForwardRouter. `conn_tags["target_player_id"]` triggers private routing. `conn_tags["server_id"]` set by MatchSvr for DirectRoute.
+- **`pb.Envelope`**: Internal wrapper. `conn_id` (0=broadcast), `data`, `conn_tags` (metadata). `conn_tags["player_id"]` auto-injected by ForwardRouter. `conn_tags["target_player_id"]` triggers private routing. `conn_tags["room_server_id"]` set by MatchSvr for DirectRoute to roomsvr.
 - **`pb.ChatReq`/`pb.ChatResp`**: Chat protocol messages.
 - **`pb.MatchEnterReq`/`pb.MatchAllocateReq`/`pb.MatchQueryReq`**: Match protocol messages.
 - **`pb.RoomJoinReq`/`pb.RoomLeaveReq`**: Room protocol messages.
