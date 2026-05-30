@@ -1,6 +1,7 @@
 package router
 
 import (
+	"cardwar/pkg"
 	"cardwar/protocol/pb"
 	"strconv"
 
@@ -28,7 +29,7 @@ func (r *ResponseRouter) Handle(request ziface.IRequest) {
 	}
 
 	// Private routing: check target_player_id in conn_tags
-	if targetPIDStr := env.ConnTags["target_player_id"]; targetPIDStr != "" {
+	if targetPIDStr := env.ConnTags[pkg.TagTargetPlayerID]; targetPIDStr != "" {
 		targetPID, _ := strconv.ParseInt(targetPIDStr, 10, 64)
 		val, ok := r.GW.PlayerConns.Load(targetPID)
 		if !ok {
@@ -69,7 +70,7 @@ func (r *ResponseRouter) applyConnTags(conn ziface.IConnection, tags map[string]
 	for k, v := range tags {
 		conn.SetProperty(k, v)
 	}
-	if pidStr, ok := tags["playerId"]; ok {
+	if pidStr, ok := tags[pkg.PropPlayerID]; ok {
 		pid, _ := strconv.ParseInt(pidStr, 10, 64)
 		r.GW.PlayerConns.Store(pid, conn.GetConnID())
 	}

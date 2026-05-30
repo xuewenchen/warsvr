@@ -1,6 +1,7 @@
 package router
 
 import (
+	"cardwar/pkg"
 	"cardwar/protocol/pb"
 	"strconv"
 	"sync"
@@ -66,7 +67,7 @@ func makeChatEnvelope(senderPID int64, content string, targetPID int64) []byte {
 	env, _ := proto.Marshal(&pb.Envelope{
 		ConnId:   99,
 		Data:     chatReq,
-		ConnTags: map[string]string{"player_id": i64s(senderPID)},
+		ConnTags: map[string]string{pkg.TagPlayerID: i64s(senderPID)},
 	})
 	return env
 }

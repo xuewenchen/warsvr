@@ -78,7 +78,7 @@ func (r *MatchRouter) handleEnter(env *pb.Envelope, conn ziface.IConnection) {
 		return
 	}
 
-	senderPID, _ := strconv.ParseInt(env.ConnTags["player_id"], 10, 64)
+	senderPID, _ := strconv.ParseInt(env.ConnTags[pkg.TagPlayerID], 10, 64)
 	player := queuedPlayer{playerID: senderPID, elo: req.Elo, conn: conn, senderID: env.ConnId}
 
 	raw, _ := queues.LoadOrStore(req.MatchType, []queuedPlayer{})
@@ -123,8 +123,8 @@ func (r *MatchRouter) matchPool(matchType string, pool []queuedPlayer) {
 			ConnId: p.senderID,
 			Data:   data,
 			ConnTags: map[string]string{
-				"server_id": serverID,
-				"match_id":  matchID,
+				pkg.TagRoomSvrID: serverID,
+				pkg.TagMatchID:   matchID,
 			},
 		}
 		envData, _ := proto.Marshal(env)
@@ -168,10 +168,10 @@ func (r *MatchRouter) sendAllocateResp(conn ziface.IConnection, senderID uint64,
 	resp, _ := proto.Marshal(&pb.MatchAllocateResp{MatchId: matchID, ServerId: serverID, Error: errMsg})
 	tags := map[string]string{}
 	if serverID != "" {
-		tags["server_id"] = serverID
+		tags[pkg.TagRoomSvrID] = serverID
 	}
 	if matchID != "" {
-		tags["match_id"] = matchID
+		tags[pkg.TagMatchID] = matchID
 	}
 	env, _ := proto.Marshal(&pb.Envelope{ConnId: senderID, Data: resp, ConnTags: tags})
 	conn.SendMsg(protocol.MsgIdMatchAllocateResp, env)
@@ -194,8 +194,8 @@ func (r *MatchRouter) handleQuery(env *pb.Envelope, conn ziface.IConnection) {
 	}
 	tags := map[string]string{}
 	if resp.Found {
-		tags["server_id"] = resp.ServerId
-		tags["match_id"] = req.MatchId
+		tags[pkg.TagRoomSvrID] = resp.ServerId
+		tags[pkg.TagMatchID] = req.MatchId
 	}
 	data, _ := proto.Marshal(resp)
 	envResp, _ := proto.Marshal(&pb.Envelope{ConnId: env.ConnId, Data: data, ConnTags: tags})
@@ -285,7 +285,7 @@ func (r *MatchRouter) handleForceLeaveQueue(request ziface.IRequest) {
 		zlog.Error(err)
 		return
 	}
-	matchType := data.ConnTags["match_type"]
+	matchType := data.ConnTags[pkg.TagMatchType]
 	raw, ok := queues.Load(matchType)
 	if !ok {
 		return

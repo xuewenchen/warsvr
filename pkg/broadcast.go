@@ -26,7 +26,7 @@ func NewGateWayBroadcaster(s ziface.IServer) Broadcaster {
 	return &broadcaster{
 		sendToAll: func(msgID uint32, data []byte) {
 			s.GetConnMgr().Range(func(connID uint64, conn ziface.IConnection, extra interface{}) error {
-				if tp, _ := conn.GetProperty("conn_type"); tp == conf.SvcGateway {
+				if tp, _ := conn.GetProperty(PropConnType); tp == conf.SvcGateway {
 					conn.SendMsg(msgID, data)
 				}
 				return nil
@@ -44,7 +44,7 @@ func (b *broadcaster) ToPlayer(msgID uint32, targetPlayerID int64, payload []byt
 	env := &pb.Envelope{
 		ConnId:   0,
 		Data:     payload,
-		ConnTags: map[string]string{"target_player_id": strconv.FormatInt(targetPlayerID, 10)},
+		ConnTags: map[string]string{TagTargetPlayerID: strconv.FormatInt(targetPlayerID, 10)},
 	}
 	envData, _ := proto.Marshal(env)
 	b.sendToAll(msgID, envData)

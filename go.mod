@@ -4,13 +4,13 @@ go 1.26.2
 
 require (
 	github.com/aceld/zinx v1.2.8
+	github.com/fsnotify/fsnotify v1.10.1
+	github.com/golang-jwt/jwt/v5 v5.3.1
 	google.golang.org/protobuf v1.33.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
-	github.com/fsnotify/fsnotify v1.10.1 // indirect
-	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.1.1 // indirect
 	github.com/klauspost/reedsolomon v1.11.8 // indirect

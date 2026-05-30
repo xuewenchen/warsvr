@@ -3,6 +3,7 @@ package router
 import (
 	"strconv"
 
+	"cardwar/pkg"
 	"cardwar/pkg/conf"
 	"cardwar/protocol"
 	"cardwar/protocol/pb"
@@ -56,14 +57,14 @@ func (gw *GatewayRef) HandleSessionGet(request ziface.IRequest) {
 		zlog.Ins().InfoF("Gateway: player %d reconnected, restored session tags=%v", playerID, data.ConnTags)
 
 		// Notify RoomSvr to update conn reference
-		if matchID := data.ConnTags["match_id"]; matchID != "" {
-			gw.notifyRoomReconnected(playerID, matchID, data.ConnTags["server_id"], connID, wsConn)
+		if matchID := data.ConnTags[pkg.TagMatchID]; matchID != "" {
+			gw.notifyRoomReconnected(playerID, matchID, data.ConnTags[pkg.TagRoomSvrID], connID, wsConn)
 		}
 
 		// Tell SessionSvr the player reconnected
 		reconnectData, _ := proto.Marshal(&pb.SessionData{
 			PlayerId:  playerID,
-			GatewayId: "gateway",
+			GatewayId: gw.ID,
 		})
 		if sconn := gw.Registry.RouteTo(conf.SvcSessionSvr, strconv.FormatInt(playerID, 10)); sconn != nil {
 			sconn.SendMsg(protocol.MsgIdSessionReconnect, reconnectData)
@@ -74,7 +75,7 @@ func (gw *GatewayRef) HandleSessionGet(request ziface.IRequest) {
 		tags := gw.collectTags(wsConn)
 		saveData, _ := proto.Marshal(&pb.SessionData{
 			PlayerId:  playerID,
-			GatewayId: "gateway",
+			GatewayId: gw.ID,
 			ConnTags:  tags,
 		})
 		if sconn := gw.Registry.RouteTo(conf.SvcSessionSvr, strconv.FormatInt(playerID, 10)); sconn != nil {
@@ -90,7 +91,7 @@ func (gw *GatewayRef) MarkDisconnected(playerID int64) {
 	}
 	data, _ := proto.Marshal(&pb.SessionData{
 		PlayerId:  playerID,
-		GatewayId: "gateway",
+		GatewayId: gw.ID,
 	})
 	sconn := gw.Registry.RouteTo(conf.SvcSessionSvr, strconv.FormatInt(playerID, 10))
 	if sconn != nil {
@@ -103,7 +104,7 @@ func (gw *GatewayRef) SyncSessionTags(conn ziface.IConnection) {
 	if gw.Registry == nil {
 		return
 	}
-	pidVal, err := conn.GetProperty("playerId")
+	pidVal, err := conn.GetProperty(pkg.PropPlayerID)
 	if err != nil {
 		return
 	}
@@ -117,7 +118,7 @@ func (gw *GatewayRef) SyncSessionTags(conn ziface.IConnection) {
 	}
 	data, _ := proto.Marshal(&pb.SessionData{
 		PlayerId:  playerID,
-		GatewayId: "gateway",
+		GatewayId: gw.ID,
 		ConnTags:  tags,
 	})
 	sconn := gw.Registry.RouteTo(conf.SvcSessionSvr, strconv.FormatInt(playerID, 10))
@@ -126,6 +127,7 @@ func (gw *GatewayRef) SyncSessionTags(conn ziface.IConnection) {
 	}
 }
 
+// 通知房间，玩家重新连接
 func (gw *GatewayRef) notifyRoomReconnected(playerID int64, matchID, serverID string, connID uint64, conn ziface.IConnection) {
 	key := serverID
 	if key == "" {
@@ -139,9 +141,9 @@ func (gw *GatewayRef) notifyRoomReconnected(playerID int64, matchID, serverID st
 	data, _ := proto.Marshal(&pb.SessionData{
 		PlayerId: playerID,
 		ConnTags: map[string]string{
-			"player_id": strconv.FormatInt(playerID, 10),
-			"match_id":  matchID,
-			"sender_id": strconv.FormatUint(connID, 10),
+			pkg.TagPlayerID: strconv.FormatInt(playerID, 10),
+			pkg.TagMatchID:  matchID,
+			pkg.TagSenderID: strconv.FormatUint(connID, 10),
 		},
 	})
 	rconn.SendMsg(protocol.MsgIdSessionReconnected, data)
@@ -160,7 +162,7 @@ func toPlayerID(v interface{}) int64 {
 
 func (gw *GatewayRef) collectTags(conn ziface.IConnection) map[string]string {
 	tags := make(map[string]string)
-	for _, key := range []string{"server_id", "match_id", "match_type"} {
+	for _, key := range pkg.SyncTagKeys {
 		if v, err := conn.GetProperty(key); err == nil {
 			if s, ok := v.(string); ok && s != "" {
 				tags[key] = s

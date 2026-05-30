@@ -32,12 +32,12 @@ func StartExpiryScanner(reg *pkg.Registry) {
 				zlog.Ins().InfoF("SessionSvr: session expired for player %d, cleaning up", s.PlayerID)
 
 				// Force leave room if player was in one
-				if matchID := s.ConnTags["match_id"]; matchID != "" {
-					notifyForceLeaveRoom(reg, s.PlayerID, matchID, s.ConnTags["server_id"])
+				if matchID := s.ConnTags[pkg.TagMatchID]; matchID != "" {
+					notifyForceLeaveRoom(reg, s.PlayerID, matchID, s.ConnTags[pkg.TagRoomSvrID])
 				}
 
 				// Force leave queue if player was in one
-				if matchType := s.ConnTags["match_type"]; matchType != "" {
+				if matchType := s.ConnTags[pkg.TagMatchType]; matchType != "" {
 					notifyForceLeaveQueue(reg, s.PlayerID, matchType)
 				}
 
@@ -60,7 +60,7 @@ func notifyForceLeaveRoom(reg *pkg.Registry, playerID int64, matchID, serverID s
 	}
 	data, _ := proto.Marshal(&pb.SessionData{
 		PlayerId: playerID,
-		ConnTags: map[string]string{"match_id": matchID},
+		ConnTags: map[string]string{pkg.TagMatchID: matchID},
 	})
 	conn.SendMsg(protocol.MsgIdSessionForceLeave, data)
 	zlog.Ins().InfoF("SessionSvr: force leave room player=%d match=%s", playerID, matchID)
@@ -74,7 +74,7 @@ func notifyForceLeaveQueue(reg *pkg.Registry, playerID int64, matchType string) 
 	}
 	data, _ := proto.Marshal(&pb.SessionData{
 		PlayerId: playerID,
-		ConnTags: map[string]string{"match_type": matchType},
+		ConnTags: map[string]string{pkg.TagMatchType: matchType},
 	})
 	conn.SendMsg(protocol.MsgIdSessionForceLeaveQueue, data)
 	zlog.Ins().InfoF("SessionSvr: force leave queue player=%d type=%s", playerID, matchType)

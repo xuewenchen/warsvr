@@ -111,7 +111,7 @@ func TestBroadcaster_ToPlayer(t *testing.T) {
 		if env.ConnId != 0 {
 			t.Error("expected ConnId=0")
 		}
-		target := env.ConnTags["target_player_id"]
+		target := env.ConnTags[TagTargetPlayerID]
 		if target != "42" {
 			t.Errorf("expected target_player_id=42, got %s", target)
 		}

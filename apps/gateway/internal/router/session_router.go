@@ -1,6 +1,8 @@
 package router
 
 import (
+	"cardwar/protocol"
+
 	"github.com/aceld/zinx/ziface"
 	"github.com/aceld/zinx/znet"
 )
@@ -14,9 +16,9 @@ type SessionResponseRouter struct {
 
 func (r *SessionResponseRouter) Handle(request ziface.IRequest) {
 	switch request.GetMsgID() {
-	case 1003: // MsgIdSessionGet
+	case protocol.MsgIdSessionGet: // 这个msgId是来自SessionSvr
 		r.GW.HandleSessionGet(request)
-	case 1005: // MsgIdSessionReconnect
+	case protocol.MsgIdSessionReconnect:
 		r.GW.HandleSessionGet(request)
 	}
 }

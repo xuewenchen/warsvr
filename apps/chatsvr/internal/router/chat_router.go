@@ -31,7 +31,7 @@ func (r *ChatRouter) Handle(request ziface.IRequest) {
 		return
 	}
 
-	senderPID, _ := strconv.ParseInt(env.ConnTags["player_id"], 10, 64)
+	senderPID, _ := strconv.ParseInt(env.ConnTags[pkg.TagPlayerID], 10, 64)
 
 	push := &pb.ChatResp{
 		SenderPlayerId: senderPID,
