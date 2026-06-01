@@ -13,7 +13,7 @@
 ## 目录结构
 
 ```
-apps/roomsvr/cmd/main.go              # 入口：pkg.NewServer 自动注入 Ping/身份路由
+apps/roomsvr/cmd/main.go              # 入口：server.New() 自动注入 Ping/身份路由 + ServiceHello
 apps/roomsvr/internal/router/
   room_router.go                       # 房间逻辑：自动创建、加入、离开、自动销毁、重连、强制清理
 ```
@@ -23,6 +23,7 @@ apps/roomsvr/internal/router/
 | 依赖 | 用途 |
 |---|---|
 | `pkg` | Broadcaster（玩家进/出/事件广播）、Registry（Dial MatchSvr 通知销毁） |
+| `pkg/server` | server.New() — 创建服务、声明处理的 msgId |
 | `pkg/conf` | 服务名常量、configured servers |
 | `protocol` | msgID 常量 |
 | `protocol/pb` | RoomJoinReq/Resp, RoomLeaveReq/Resp, RoomDestroyedPush, RoomEventPush, SessionData, Envelope |
@@ -42,13 +43,11 @@ scripts\svc.bat start roomsvr-1
 
 RoomSvr 通过 Gateway 的 `route_type: direct` 接收请求。客户端已通过 MatchSvr 获得 `server_id`（设为 `roomsvr-1`），Gateway 精准投递到目标实例。
 
-```yaml
-gateway:
-  routes:
-    roomsvr:
-      forward: [14, 16]        # room join, room leave
-      route_key: room_server_id     # MatchSvr 分配时设在连接上
-      route_type: direct       # 精准匹配 server_id
+RoomSvr 启动时声明自身能力，Gateway 自动发现路由：
+```go
+s := server.New(cfg, conf.SvcRoomSvr,
+    []uint32{MsgIdRoomJoinReq, MsgIdRoomLeaveReq},
+    []uint32{MsgIdRoomJoinResp, MsgIdRoomLeaveResp, MsgIdRoomEventPush})
 ```
 
 ## 交互流程

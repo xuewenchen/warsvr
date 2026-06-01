@@ -12,10 +12,10 @@ Player session persistence — handles disconnect/reconnect and TTL-based cleanu
 ## 目录结构
 
 ```
-apps/sessionsvr/cmd/main.go                                # Entrypoint: Dial RoomSvr/MatchSvr, start TTL scanner
+apps/sessionsvr/cmd/main.go                                # Entrypoint: server.New() with nil msgIDs (routing is hardcoded)
 apps/sessionsvr/internal/router/
-  session_router.go                                         # SessionSave/Get/Disconnect/Reconnect handlers
-  expiry.go                                                 # TTL scanner + force-leave cleanup
+  session_router.go                                         # SessionSave/Get/Disconnect/Reconnect handlers; RWMutex-protected
+  expiry.go                                                 # TTL scanner + force-leave cleanup; RWMutex-protected reads
 ```
 
 ## 依赖
@@ -23,13 +23,15 @@ apps/sessionsvr/internal/router/
 |  |  |
 |---|---|
 | `pkg` | Registry (Dial RoomSvr/MatchSvr) |
+| `pkg/server` | server.New() — no ServiceHello (session routing is hardcoded in gateway) |
 | `protocol` | msgID  |
 | `protocol/pb` | SessionData |
 
 ## State
 
 - `sessions sync.Map`  `playerId(int64)  *Session`
-- `Session.PlayerID`, `GatewayID`, `ConnTags`, `DisconnectedAt` (0=connected)
+- `Session.mu sync.RWMutex`, `PlayerID`, `GatewayID`, `ConnTags`, `DisconnectedAt` (0=connected)
+- All Session field access is mutex-protected to prevent data races with TTL scanner
 
 ## 启动
 

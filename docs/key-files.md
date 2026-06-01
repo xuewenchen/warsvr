@@ -4,51 +4,54 @@
 
 | File | Purpose |
 |---|---|
-| `apps/gateway/cmd/main.go` | Entrypoint: JWT auth, backend Dial, route setup, hot-reload |
-| `apps/gateway/internal/router/gateway_ref.go` | GatewayRef, BackendRouteInfo, BuildRouteIndex, DialSessionSvr/SyncSessionSvr |
-| `apps/gateway/internal/router/forward_router.go` | Generic client→backend forwarding, route key resolution |
-| `apps/gateway/internal/router/response_router.go` | Generic backend→client response handling, conn_tags + session sync |
-| `apps/gateway/internal/router/reconnect.go` | Reconnect logic: CheckReconnect, MarkDisconnected, SyncSessionTags |
-| `apps/gateway/internal/router/session_router.go` | SessionSvr response handler (SessionGet, SessionReconnect) |
+| `apps/gateway/cmd/main.go` | Entrypoint: minimal — flag parse + `gateway.New()` + Serve |
+| `pkg/gateway/gateway.go` | GatewayServer, New(), route table, BackendRouteInfo, BuildRouteIndex, DialSessionSvr |
+| `pkg/gateway/server.go` | WebSocket server init: JWT auth, OnConnStart/Stop, Ping/Forward router setup |
+| `pkg/gateway/forward.go` | ForwardRouter: client→backend forwarding, route key resolution |
+| `pkg/gateway/response.go` | ResponseRouter: backend→client response handling, conn_tags + session sync |
+| `pkg/gateway/hello.go` | ServiceHelloRouter: process backend hello, dynamically register ForwardRouter/ResponseRouter |
+| `pkg/gateway/reconnect.go` | Reconnect logic: CheckReconnect, MarkDisconnected, SyncSessionTags |
+| `pkg/gateway/session.go` | SessionResponseRouter: SessionSvr response handler (SessionGet, SessionReconnect) |
 
 ## ChatSvr
 
 | File | Purpose |
 |---|---|
-| `apps/chatsvr/cmd/main.go` | Entrypoint |
+| `apps/chatsvr/cmd/main.go` | Entrypoint: `server.New()` + AddRouter + Serve |
 | `apps/chatsvr/internal/router/chat_router.go` | Chat processing, global/private routing via Broadcaster |
 
 ## MatchSvr
 
 | File | Purpose |
 |---|---|
-| `apps/matchsvr/cmd/main.go` | Entrypoint |
+| `apps/matchsvr/cmd/main.go` | Entrypoint: `server.New()` + AddRouter + Serve |
 | `apps/matchsvr/internal/router/match_router.go` | Pool queue, allocate roomsvr, lookup match location |
 
 ## RoomSvr
 
 | File | Purpose |
 |---|---|
-| `apps/roomsvr/cmd/main.go` | Entrypoint |
+| `apps/roomsvr/cmd/main.go` | Entrypoint: `server.New()` + AddRouter + Serve; Dial MatchSvr for room-destroyed |
 | `apps/roomsvr/internal/router/room_router.go` | Room lifecycle: auto-create on join, auto-destroy on empty |
 
 ## SessionSvr
 
 | File | Purpose |
 |---|---|
-| `apps/sessionsvr/cmd/main.go` | Entrypoint: Dial RoomSvr/MatchSvr, start TTL scanner |
-| `apps/sessionsvr/internal/router/session_router.go` | SessionSave/Get/Disconnect/Reconnect handlers |
-| `apps/sessionsvr/internal/router/expiry.go` | TTL scanner + force-leave cleanup |
+| `apps/sessionsvr/cmd/main.go` | Entrypoint: `server.New()` with nil msgIDs (session routing is hardcoded); Dial RoomSvr/MatchSvr |
+| `apps/sessionsvr/internal/router/session_router.go` | SessionSave/Get/Disconnect/Reconnect handlers; Session struct with sync.RWMutex |
+| `apps/sessionsvr/internal/router/expiry.go` | TTL scanner + force-leave cleanup (RWMutex-protected reads) |
 
 ## Shared Libraries
 
 | File | Purpose |
 |---|---|
-| `pkg/pool.go` | Backend connection pool: Dial, reconnection, Sync, Add/Remove server; RouteFunc types |
-| `pkg/registry.go` | Multi-backend Registry: Dial, RouteTo, SyncBackend |
-| `pkg/server.go` | `NewServer(cfg)` — wraps znet.NewUserConfServer + auto-registers PingRouter & ServiceIdentityRouter |
-| `pkg/corouter/ping_router.go` | Common PingRouter: ping→pong echo, shared by all backend services |
-| `pkg/corouter/service_identity_router.go` | ServiceIdentityRouter: auto-set conn_type on connect |
+| `pkg/server/server.go` | `server.New(cfg, service, forwardIDs, sendIDs)` — wraps znet.NewUserConfServer + auto-registers PingRouter & ServiceIdentityRouter |
+| `pkg/gateway/` | All gateway types and initialization — reusable by any gateway project |
+| `pkg/pool.go` | Backend connection pool: Dial, reconnection, Sync, Add/Remove server; RouteFunc types; AddConnectionRouter for dynamic registration |
+| `pkg/registry.go` | Multi-backend Registry: Dial, RouteTo, SyncBackend, Pool |
+| `pkg/corouter/ping_router.go` | Common PingRouter: ping→pong echo, shared by all services |
+| `pkg/corouter/service_identity_router.go` | ServiceIdentityRouter: set conn_type on connect + reply ServiceHello (if msgIDs non-empty) |
 | `pkg/broadcast.go` | Broadcaster: ToAll, ToPlayer, ToConn (filtered by conn_type=gateway) |
 | `pkg/auth/jwt.go` | JWT: GenerateJWT, ValidateJWT (HS256, playerId/user_id) |
 | `pkg/errors.go` | HTTPError, ErrUnauthorized |
@@ -59,17 +62,17 @@
 |---|---|
 | `pkg/conf/config.go` | Config types, Load, LookupServer, ParseHostPort, service name constants |
 | `pkg/conf/conf_watcher.go` | `Watch(path, callback)` — fsnotify hot-reload |
-| `pkg/conn_tags.go` | Well-known conn property / conn_tags key constants (Prop*, Tag*, SyncTagKeys) |
-| `config.yml` | Service instances, JWT secret, gateway routes |
+| `pkg/connkey/connkey.go` | Well-known conn property / conn_tags key constants (Prop*, Tag*, SyncTagKeys) |
+| `config.yml` | Service instances, JWT secret, gateway routes (forward is optional) |
 
 ## Protocol
 
 | File | Purpose |
 |---|---|
-| `protocol/proto/cardwar.proto` | Envelope, ChatReq, ChatResp |
+| `protocol/proto/cardwar.proto` | Envelope, ChatReq/Resp, ServiceHello |
 | `protocol/proto/match.proto` | MatchEnterReq/Resp, MatchResultPush, MatchAllocateReq/Resp, MatchQueryReq/Resp |
 | `protocol/proto/room.proto` | RoomJoinReq/Resp, RoomLeaveReq/Resp |
-| `protocol/proto/msgid.proto` | MsgID enum (source of truth) |
+| `protocol/proto/msgid.proto` | MsgID enum (source of truth for all message IDs) |
 | `protocol/msgid.go` | Go uint32 aliases for pb.MsgID_* |
 | `protocol/pb/*.pb.go` | Generated protobuf Go code |
 

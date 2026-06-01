@@ -14,7 +14,7 @@
 ## 目录结构
 
 ```
-apps/matchsvr/cmd/main.go              # 入口：pkg.NewServer 自动注入 Ping/身份路由
+apps/matchsvr/cmd/main.go              # 入口：server.New() 自动注入 Ping/身份路由 + ServiceHello
 apps/matchsvr/internal/router/
   match_router.go                       # 匹配逻辑：队列、分配、查询、匹配池
 ```
@@ -24,6 +24,7 @@ apps/matchsvr/internal/router/
 | 依赖 | 用途 |
 |---|---|
 | `pkg` | Broadcaster（预留，匹配池推送） |
+| `pkg/server` | server.New() — 创建服务、声明处理的 msgId |
 | `pkg/conf` | 读取 roomsvr 实例列表（负载均衡用） |
 | `protocol` | msgID 常量 |
 | `protocol/pb` | MatchEnterReq/Resp, MatchAllocateReq/Resp, MatchQueryReq/Resp, MatchResultPush, SessionData |
@@ -107,15 +108,11 @@ MatchRouter.handleForceLeaveQueue:
   → queues.Store(matchType, updatedPool)
 ```
 
-当玩家断线超过 120s TTL，SessionSvr 主动通知 MatchSvr 将其从匹配队列中移除。
+当玩家断线超过 120s TTL，SessionSvr 主动通知 MatchSvr 将其从匹配队列中移除。## ServiceHello 自注册
 
-## 与 Gateway 的配置
-
-```yaml
-gateway:
-  routes:
-    matchsvr:
-      forward: [11, 18, 20]    # enter pool, allocate, query
-      route_key: connId
-      route_type: hash
+MatchSvr 启动时声明自身能力，Gateway 自动发现路由：
+```go
+s := server.New(cfg, conf.SvcMatchSvr,
+    []uint32{MsgIdMatchEnterReq, MsgIdMatchAllocateReq, MsgIdMatchQueryReq, MsgIdRoomDestroyedPush},
+    []uint32{MsgIdMatchEnterResp, MsgIdMatchResultPush, MsgIdMatchAllocateResp, MsgIdMatchQueryResp})
 ```

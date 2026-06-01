@@ -14,7 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 | Service | Role | Routing |
 |---|---|---|
-| **Gateway** | JWT auth, pure forwarding (config-driven, two generic routers) | Client ↔ Backends |
+| **Gateway** | JWT auth, pure forwarding (dynamic ServiceHello registration) | Client ↔ Backends |
 | **ChatSvr** | Chat processing, global/private broadcast | `route_type: hash` |
 | **MatchSvr** | Matchmaking pool + roomsvr directory | `route_type: hash` |
 | **RoomSvr** | Room lifecycle (auto-create, auto-destroy) | `route_type: direct` |

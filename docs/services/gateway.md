@@ -5,21 +5,26 @@
 客户端入口，负责三件事：**JWT认证**、**协议转发**、**连接管理**。
 
 - JWT 鉴权：WebSocket 升级前验证 token，拒绝无效连接（HTTP 401）
-- 纯转发：不解析消息体，根据 config.yml 的路由表将客户端消息转发到对应后端
+- 纯转发：不解析消息体，根据动态路由表将客户端消息转发到对应后端
 - 连接映射：维护 `PlayerConns`（playerId → connId），用于私聊精准投递
 - 多实例：Gateway 之间无感知，不通信
+- 路由动态注册：通过 ServiceHello 协议自动发现后端能力，无需手动配置 forward msgID
 
 ## 目录结构
 
 ```
-apps/gateway/cmd/main.go              # 入口：JWT auth, Dial backends, 启动 WS 服务
-apps/gateway/internal/router/
-  gateway_ref.go                       # GatewayRef（共享状态，含 ID、DialSessionSvr/SyncSessionSvr）, BackendRouteInfo, BuildRouteIndex
-  forward_router.go                    # 泛化转发路由器：查路由表 → 打包 Envelope → RouteTo
-  response_router.go                   # 泛化响应路由器：解包 Envelope → 应用 conn_tags → 投递
+apps/gateway/cmd/main.go              # 入口：极简 — flag parse + gateway.New() + Serve
+pkg/gateway/
+  gateway.go                           # GatewayServer, New(), route table, BuildRouteIndex
+  server.go                            # WebSocket 初始化：JWT auth, OnConnStart/Stop, Ping/Forward
+  forward.go                           # 泛化转发路由器：查路由表 → 打包 Envelope → RouteTo
+  response.go                          # 泛化响应路由器：解包 Envelope → 应用 conn_tags → 投递
+  hello.go                             # ServiceHello 处理器：动态注册 ForwardRouter + ResponseRouter
   reconnect.go                         # 断线重连逻辑：CheckReconnect, MarkDisconnected, SyncSessionTags
-  session_router.go                    # SessionSvr 响应处理器（SessionGet, SessionReconnect）
+  session.go                           # SessionSvr 响应处理器（SessionGet, SessionReconnect）
 ```
+
+Gateway 核心类型和初始化逻辑在 `pkg/gateway/`，可被任何 gateway 项目复用。
 
 ## 依赖
 
@@ -30,8 +35,30 @@ apps/gateway/internal/router/
 | `pkg/conf` | 配置加载、热加载 |
 | `pkg/corouter` | PingRouter（ping→pong） |
 | `protocol` | msgID 常量 |
-| `protocol/pb` | Envelope, ChatResp（错误响应）, SessionData |
+| `protocol/pb` | Envelope, ChatResp（错误响应）, SessionData, ServiceHello |
 | `pkg/conf` | 服务名常量（`SvcSessionSvr` 等） |
+
+## ServiceHello — 动态路由注册
+
+Gateway 连接后端时自动完成路由发现，**不需要**在 config.yml 里手动列 `forward:`。
+
+```
+Gateway                              Backend (e.g. chatsvr)
+───────                              ──────
+Dial → TCP connect
+SendMsg(SERVICE_IDENTITY=1001)  →   收到 identity="gateway"
+                                    ← SendMsg(SERVICE_HELLO=1009, {service:"chatsvr", msg_ids:[5], send_msg_ids:[6]})
+收到 hello:
+  → gw.Server.AddRouter(5, ForwardRouter)     # WebSocket 侧转发
+  → pool.AddConnectionRouter(conn, 6, ResponseRouter)  # 后端连接侧响应
+```
+
+后端在 `server.New()` 中声明自己处理/发送的 msgId：
+```go
+s := server.New(cfg, conf.SvcChatSvr,
+    []uint32{protocol.MsgIdChatReq},   // forward
+    []uint32{protocol.MsgIdChatResp})  // send
+```
 
 ### 断线重连（Session）
 
@@ -81,7 +108,7 @@ scripts\svc.bat start gw-1 prod.yml gw-1   # 指定配置和实例
 ### 客户端连接
 
 ```
-Client ── ws://host:9000/ws?token=<JWT> ──> Gateway
+Client ── ws://host:9001/ws?token=<JWT> ──> Gateway
   → SetWebsocketAuth: ValidateJWT(token, secret)
     → 无效: HTTP 401
     → 有效: 提取 playerId → pendingAuths[RemoteAddr] = playerId

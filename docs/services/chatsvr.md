@@ -11,7 +11,7 @@
 ## 目录结构
 
 ```
-apps/chatsvr/cmd/main.go              # 入口：pkg.NewServer 自动注入 Ping/身份路由
+apps/chatsvr/cmd/main.go              # 入口：server.New() 自动注入 Ping/身份路由 + ServiceHello
 apps/chatsvr/internal/router/
   chat_router.go                       # 聊天逻辑：全局广播、私聊投递+确认
 ```
@@ -21,6 +21,7 @@ apps/chatsvr/internal/router/
 | 依赖 | 用途 |
 |---|---|
 | `pkg` | Broadcaster：ToAll（全局广播）、ToPlayer（精准投递）、ToConn（发送确认） |
+| `pkg/server` | server.New() — 创建服务、声明处理的 msgId（ChatReq=5, ChatResp=6） |
 | `protocol` | msgID 常量 |
 | `protocol/pb` | ChatReq, ChatResp, Envelope |
 

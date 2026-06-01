@@ -10,12 +10,13 @@ services:                    # ServicesConfig — map of service name → []Serv
   chatsvr: [...]             # backend servers
   matchsvr: [...]
   roomsvr: [...]
+  sessionsvr: [...]
 
 gateway:                     # GatewayConfig
   jwt_secret: "..."          # HMAC-SHA256 secret for JWT validation
   routes:                    # map of backend → BackendRoute
     <backend>:
-      forward: [...]         # client→backend msgIDs
+      forward: [...]         # optional: client→backend msgIDs (deprecated, backends self-register via ServiceHello)
       route_key: <key>       # "connId", "playerId", "room_server_id", or any conn property
       route_type: <type>     # "hash" (default), "random", "direct"
 ```
@@ -41,9 +42,9 @@ type GatewayConfig struct {
 }
 
 type BackendRoute struct {
-    Forward   []uint32 `yaml:"forward"`     // msgIDs to forward to this backend
-    RouteKey  string   `yaml:"route_key"`   // connection property to use as routing key
-    RouteType string   `yaml:"route_type"`  // "hash" | "random" | "direct"
+    Forward   []uint32 `yaml:"forward,omitempty"` // optional: backends self-register via ServiceHello
+    RouteKey  string   `yaml:"route_key"`         // connection property to use as routing key
+    RouteType string   `yaml:"route_type"`        // "hash" | "random" | "direct"
 }
 ```
 
@@ -54,6 +55,22 @@ type BackendRoute struct {
 | `hash` | `FNV32(key) % len(healthy)` — consistent per key | Stateless services (chatsvr, matchsvr) |
 | `random` | `rand.Intn(len(healthy))` — no affinity | Stateless, no session needed |
 | `direct` | Iterate healthy, find `conn.GetProperty("server_id") == key` | Stateful (roomsvr): client/upstream sets `room_server_id` conn property |
+
+## ServiceHello — Dynamic Route Registration
+
+Backends announce their capabilities on connect. `forward` in config is no longer needed — it's kept as optional fallback.
+
+When Gateway dials a backend:
+1. Gateway sends `SERVICE_IDENTITY` (1001)
+2. Backend replies with `SERVICE_HELLO` (1009) listing `msg_ids` (forward) and `send_msg_ids` (response/push)
+3. Gateway dynamically registers ForwardRouter and ResponseRouter
+
+Backends declare their msgIDs in `server.New()`:
+```go
+s := server.New(cfg, conf.SvcChatSvr,
+    []uint32{protocol.MsgIdChatReq},   // forward
+    []uint32{protocol.MsgIdChatResp})  // send
+```
 
 ## Full Example
 
@@ -84,19 +101,21 @@ services:
       listen: 0.0.0.0:8005
       public_addr: 127.0.0.1:8005
 
+  sessionsvr:
+    - id: sessionsvr-1
+      listen: 0.0.0.0:8008
+      public_addr: 127.0.0.1:8008
+
 gateway:
   jwt_secret: "change-me-in-production"
   routes:
     chatsvr:
-      forward: [5]
       route_key: playerId
       route_type: hash
     matchsvr:
-      forward: [11, 18, 20]
       route_key: connId
       route_type: hash
     roomsvr:
-      forward: [14, 16]
       route_key: room_server_id
       route_type: direct
 ```
