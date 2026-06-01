@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"cardwar/pkg"
 	"cardwar/protocol/pb"
 	"context"
 	"errors"
@@ -43,26 +44,37 @@ type mockConn struct {
 	stopCount int
 	mu        sync.Mutex
 	props     map[string]interface{}
+	sent      []sentMsg
 }
 
-func (m *mockConn) Start()                                                    {}
-func (m *mockConn) Stop()                                                     { m.mu.Lock(); m.stopCount++; m.mu.Unlock() }
-func (m *mockConn) Context() context.Context                                  { return nil }
-func (m *mockConn) GetName() string                                           { return "" }
-func (m *mockConn) GetConnection() net.Conn                                   { return nil }
-func (m *mockConn) GetWsConn() *websocket.Conn                                { return nil }
-func (m *mockConn) GetTCPConnection() net.Conn                                { return nil }
-func (m *mockConn) GetConnID() uint64                                         { return m.connID }
-func (m *mockConn) GetConnIdStr() string                                      { return "" }
-func (m *mockConn) GetMsgHandler() ziface.IMsgHandle                          { return nil }
-func (m *mockConn) GetWorkerID() uint32                                       { return 0 }
-func (m *mockConn) RemoteAddr() net.Addr                                      { return nil }
-func (m *mockConn) LocalAddr() net.Addr                                       { return nil }
-func (m *mockConn) LocalAddrString() string                                   { return "" }
-func (m *mockConn) RemoteAddrString() string                                  { return "" }
-func (m *mockConn) Send([]byte) error                                         { return nil }
-func (m *mockConn) SendToQueue([]byte, ...ziface.MsgSendOption) error         { return nil }
-func (m *mockConn) SendMsg(uint32, []byte) error                              { return nil }
+type sentMsg struct {
+	msgID uint32
+	data  []byte
+}
+
+func (m *mockConn) Start()                                            {}
+func (m *mockConn) Stop()                                             { m.mu.Lock(); m.stopCount++; m.mu.Unlock() }
+func (m *mockConn) Context() context.Context                          { return nil }
+func (m *mockConn) GetName() string                                   { return "" }
+func (m *mockConn) GetConnection() net.Conn                           { return nil }
+func (m *mockConn) GetWsConn() *websocket.Conn                        { return nil }
+func (m *mockConn) GetTCPConnection() net.Conn                        { return nil }
+func (m *mockConn) GetConnID() uint64                                 { return m.connID }
+func (m *mockConn) GetConnIdStr() string                              { return "" }
+func (m *mockConn) GetMsgHandler() ziface.IMsgHandle                  { return nil }
+func (m *mockConn) GetWorkerID() uint32                               { return 0 }
+func (m *mockConn) RemoteAddr() net.Addr                              { return nil }
+func (m *mockConn) LocalAddr() net.Addr                               { return nil }
+func (m *mockConn) LocalAddrString() string                           { return "" }
+func (m *mockConn) RemoteAddrString() string                          { return "" }
+func (m *mockConn) Send([]byte) error                                 { return nil }
+func (m *mockConn) SendToQueue([]byte, ...ziface.MsgSendOption) error { return nil }
+func (m *mockConn) SendMsg(msgID uint32, data []byte) error {
+	m.mu.Lock()
+	m.sent = append(m.sent, sentMsg{msgID: msgID, data: data})
+	m.mu.Unlock()
+	return nil
+}
 func (m *mockConn) SendBuffMsg(uint32, []byte, ...ziface.MsgSendOption) error { return nil }
 func (m *mockConn) SetProperty(k string, v interface{}) {
 	m.mu.Lock()
@@ -305,5 +317,62 @@ func TestHandleSessionInvalidate_ConnAlreadyGone(t *testing.T) {
 	// PlayerConns should still be cleaned even if ConnMgr.Get fails
 	if _, exists := gw.PlayerConns.Load(playerID); exists {
 		t.Error("expected player to be removed from PlayerConns even when conn is gone")
+	}
+}
+
+// ── Fix #7: MarkDisconnected caching + retry ───────────────────────────────
+
+func TestMarkDisconnected_CachesOnRouteToNil(t *testing.T) {
+	const playerID int64 = 22
+
+	// Empty Registry with no sessionsvr backend → RouteTo returns nil
+	gw := &GatewayServer{
+		ID:          "gw-1",
+		PlayerConns: &sync.Map{},
+		Registry:    pkg.NewRegistry("gw-1"),
+	}
+
+	gw.MarkDisconnected(playerID)
+
+	if _, exists := gw.pendingDisconnects.Load(playerID); !exists {
+		t.Error("expected pendingDisconnects entry when RouteTo returns nil")
+	}
+}
+
+func TestMarkDisconnected_PassesWhenRegistryNil(t *testing.T) {
+	const playerID int64 = 22
+
+	gw := &GatewayServer{
+		ID:          "gw-1",
+		PlayerConns: &sync.Map{},
+		Registry:    nil,
+	}
+
+	// Should not panic
+	gw.MarkDisconnected(playerID)
+
+	// No pending entry either — we bail early when Registry is nil
+	if _, exists := gw.pendingDisconnects.Load(playerID); exists {
+		t.Error("expected no pendingDisconnects entry when Registry is nil")
+	}
+}
+
+func TestRetryPendingDisconnects_StillUnreachable(t *testing.T) {
+	const playerID int64 = 22
+
+	// Empty Registry → RouteTo always returns nil
+	gw := &GatewayServer{
+		ID:          "gw-1",
+		PlayerConns: &sync.Map{},
+		Registry:    pkg.NewRegistry("gw-1"),
+	}
+
+	gw.pendingDisconnects.Store(playerID, time.Now())
+
+	gw.retryPendingDisconnects()
+
+	// Still pending — RouteTo returned nil again
+	if _, exists := gw.pendingDisconnects.Load(playerID); !exists {
+		t.Error("expected pendingDisconnects entry kept when retry still fails")
 	}
 }

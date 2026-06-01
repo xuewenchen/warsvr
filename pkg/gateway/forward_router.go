@@ -50,30 +50,48 @@ func (r *ForwardRouter) Handle(request ziface.IRequest) {
 	conn := r.GW.RouteTo(route.Backend, routeKey)
 	if conn == nil {
 		zlog.Ins().ErrorF("ForwardRouter: no healthy backend for %s msgID=%d", route.Backend, msgID)
-		r.sendError(request, msgID)
+		r.sendError(request.GetConnection(), msgID)
 		return
 	}
 	conn.SendMsg(msgID, envData)
 }
 
-func (r *ForwardRouter) sendError(request ziface.IRequest, reqMsgID uint32) {
-	// Map request msgID to response msgID for the error response.
-	// Convention: application request msgIDs have a +1 response msgID.
-	var respMsgID uint32
+func (r *ForwardRouter) sendError(conn ziface.IConnection, reqMsgID uint32) {
+	errMsg := "service unavailable: backend offline"
+
 	switch reqMsgID {
 	case protocol.MsgIdChatReq:
-		respMsgID = protocol.MsgIdChatResp
-	default:
-		respMsgID = reqMsgID + 1
-	}
+		data, _ := proto.Marshal(&pb.ChatResp{
+			SenderPlayerId: -1,
+			Content:        errMsg,
+			Timestamp:      time.Now().Unix(),
+		})
+		conn.SendMsg(protocol.MsgIdChatResp, data)
 
-	errResp := &pb.ChatResp{
-		SenderPlayerId: -1,
-		Content:        "service unavailable: backend offline",
-		Timestamp:      time.Now().Unix(),
+	case protocol.MsgIdMatchEnterReq:
+		data, _ := proto.Marshal(&pb.MatchEnterResp{Status: "error"})
+		conn.SendMsg(protocol.MsgIdMatchEnterResp, data)
+
+	case protocol.MsgIdMatchAllocateReq:
+		data, _ := proto.Marshal(&pb.MatchAllocateResp{Error: errMsg})
+		conn.SendMsg(protocol.MsgIdMatchAllocateResp, data)
+
+	case protocol.MsgIdMatchQueryReq:
+		data, _ := proto.Marshal(&pb.MatchQueryResp{Found: false})
+		conn.SendMsg(protocol.MsgIdMatchQueryResp, data)
+
+	case protocol.MsgIdRoomJoinReq:
+		data, _ := proto.Marshal(&pb.RoomJoinResp{Success: false, Error: errMsg})
+		conn.SendMsg(protocol.MsgIdRoomJoinResp, data)
+
+	case protocol.MsgIdRoomLeaveReq:
+		data, _ := proto.Marshal(&pb.RoomLeaveResp{Success: false, Error: errMsg})
+		conn.SendMsg(protocol.MsgIdRoomLeaveResp, data)
+
+	default:
+		// Unknown msgID — send empty body with reqMsgID+1 convention.
+		conn.SendMsg(reqMsgID+1, nil)
 	}
-	data, _ := proto.Marshal(errResp)
-	request.GetConnection().SendMsg(respMsgID, data)
 }
 
 func (r *ForwardRouter) resolveRouteKey(conn ziface.IConnection, route *BackendRouteInfo) string {

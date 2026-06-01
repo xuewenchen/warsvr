@@ -39,6 +39,7 @@ func (gw *GatewayServer) CheckReconnect(playerID int64, conn ziface.IConnection)
 
 	select {
 	case <-ch:
+		gw.pendingDisconnects.Delete(playerID) // 重连成功，清理过时的断开通知
 		zlog.Ins().InfoF("Gateway: CheckReconnect completed for player %d", playerID)
 	case <-time.After(reconnectTimeout):
 		zlog.Ins().ErrorF("Gateway: CheckReconnect timeout for player %d", playerID)
@@ -107,6 +108,7 @@ func (gw *GatewayServer) HandleSessionGet(request ziface.IRequest) {
 }
 
 // MarkDisconnected tells SessionSvr the player disconnected (but keeps session alive for TTL).
+// On failure (SessionSvr unreachable), queues the disconnect for background retry.
 func (gw *GatewayServer) MarkDisconnected(playerID int64) {
 	if gw.Registry == nil {
 		return
@@ -116,9 +118,12 @@ func (gw *GatewayServer) MarkDisconnected(playerID int64) {
 		GatewayId: gw.ID,
 	})
 	sconn := gw.Registry.RouteTo(conf.SvcSessionSvr, strconv.FormatInt(playerID, 10))
-	if sconn != nil {
-		sconn.SendMsg(protocol.MsgIdSessionDisconnect, data)
+	if sconn == nil {
+		gw.pendingDisconnects.Store(playerID, time.Now())
+		zlog.Ins().ErrorF("Gateway: MarkDisconnected failed for player %d (no sessionsvr), queued for retry", playerID)
+		return
 	}
+	sconn.SendMsg(protocol.MsgIdSessionDisconnect, data)
 }
 
 // SyncSessionTags pushes the current connection tags to SessionSvr.
@@ -229,4 +234,33 @@ func (gw *GatewayServer) HandleSessionInvalidate(request ziface.IRequest) {
 	wsConn.Stop()
 	// OnConnStop fires → PlayerConns.Delete (no-op, already deleted) →
 	// MarkDisconnected → SessionSvr ignores (stale gateway check)
+}
+
+const disconnectRetryInterval = 5 * time.Second
+
+// retryDisconnectLoop periodically retries queued MarkDisconnected calls.
+func (gw *GatewayServer) retryDisconnectLoop() {
+	ticker := time.NewTicker(disconnectRetryInterval)
+	defer ticker.Stop()
+	for range ticker.C {
+		gw.retryPendingDisconnects()
+	}
+}
+
+func (gw *GatewayServer) retryPendingDisconnects() {
+	gw.pendingDisconnects.Range(func(key, value interface{}) bool {
+		playerID := key.(int64)
+		data, _ := proto.Marshal(&pb.SessionData{
+			PlayerId:  playerID,
+			GatewayId: gw.ID,
+		})
+		sconn := gw.Registry.RouteTo(conf.SvcSessionSvr, strconv.FormatInt(playerID, 10))
+		if sconn == nil {
+			return true // still unreachable, keep waiting
+		}
+		sconn.SendMsg(protocol.MsgIdSessionDisconnect, data)
+		gw.pendingDisconnects.Delete(playerID)
+		zlog.Ins().InfoF("Gateway: retried MarkDisconnected for player %d — success", playerID)
+		return true
+	})
 }

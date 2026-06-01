@@ -40,6 +40,7 @@ type GatewayServer struct {
 	RspRouter *ResponseRouter // set during init
 
 	pendingSessionGets sync.Map // playerID(int64) → chan struct{} — signals CheckReconnect
+	pendingDisconnects sync.Map // playerID(int64) → time.Time — queued MarkDisconnected retries
 }
 
 // New creates a GatewayServer with all initialization: config loading, backend connections,
@@ -73,6 +74,9 @@ func New(configPath, gwID string) (*GatewayServer, error) {
 	}
 	// 链接session后端服务
 	gw.DialSessionSvr()
+
+	// 启动 MarkDisconnected 重试循环
+	go gw.retryDisconnectLoop()
 
 	// 配置热更
 	if _, err := conf.Watch(configPath, func(cfg *conf.Config) {
