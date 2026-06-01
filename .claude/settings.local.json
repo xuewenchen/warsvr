@@ -94,7 +94,9 @@
       "Bash(bash scripts/gen_pb.sh)",
       "Bash(grep -n 'entry\\\\.conn = conn$' pkg/pool.go)",
       "Bash(grep -n 'connCh <- conn$' pkg/pool.go)",
-      "Bash(timeout 5 ./bin/gateway.exe -conf config.yml -id gw-1)"
+      "Bash(timeout 5 ./bin/gateway.exe -conf config.yml -id gw-1)",
+      "mcp__codegraph__codegraph_trace",
+      "mcp__codegraph__codegraph_files"
     ]
   }
 }

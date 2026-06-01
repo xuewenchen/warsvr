@@ -44,6 +44,9 @@ enum MsgID {
   SESSION_FORCE_LEAVE_QUEUE = 1007; // SessionSvr → MatchSvr: TTL expired, force leave queue
   SESSION_RECONNECTED = 1008;       // Gateway → RoomSvr: player reconnected, update conn
 
+  // ===== session invalidation
+  SESSION_INVALIDATE = 1010;  // SessionSvr → All Gateways: player reconnected elsewhere
+
   // ===== service discovery
   SERVICE_HELLO = 1009;  // Backend → Caller: announce handled msgIDs
 }

@@ -38,6 +38,8 @@ type GatewayServer struct {
 
 	FwdRouter *ForwardRouter  // set during init
 	RspRouter *ResponseRouter // set during init
+
+	pendingSessionGets sync.Map // playerID(int64) → chan struct{} — signals CheckReconnect
 }
 
 // New creates a GatewayServer with all initialization: config loading, backend connections,
@@ -147,6 +149,7 @@ func (gw *GatewayServer) sessionRouters() []pkg.BackendRouterConfig {
 		{MsgID: protocol.MsgIdPing, Router: &corouter.PingRouter{}},
 		{MsgID: protocol.MsgIdSessionGet, Router: &SessionResponseRouter{GW: gw}},
 		{MsgID: protocol.MsgIdSessionReconnect, Router: &SessionResponseRouter{GW: gw}},
+		{MsgID: protocol.MsgIdSessionInvalidate, Router: &SessionResponseRouter{GW: gw}},
 	}
 }
 

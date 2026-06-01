@@ -35,7 +35,7 @@ func main() {
 		Mode:    zconf.ServerModeTcp,
 	}, conf.SvcSessionSvr, nil, nil) // session routing is hardcoded, no ServiceHello needed
 
-	sr := &router.SessionRouter{Reg: reg}
+	sr := &router.SessionRouter{Reg: reg, Server: s}
 	s.AddRouter(protocol.MsgIdSessionSave, sr)
 	s.AddRouter(protocol.MsgIdSessionGet, sr)
 	s.AddRouter(protocol.MsgIdSessionDisconnect, sr)

@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"strconv"
+	"time"
 
 	"cardwar/pkg/conf"
 	"cardwar/pkg/connkey"
@@ -13,22 +14,35 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// CheckReconnect is called from OnConnStart after auth. It queries SessionSvr
-// to see if this player has a previous session, and if so restores state.
+const reconnectTimeout = 3 * time.Second
+
+// CheckReconnect is called from OnConnStart after auth. It synchronously waits
+// for SessionSvr to respond with session data, restoring conn_tags before the
+// Zinx reader goroutine starts processing client messages. A timeout ensures
+// OnConnStart doesn't hang if SessionSvr is unreachable.
 func (gw *GatewayServer) CheckReconnect(playerID int64, conn ziface.IConnection) {
 	if gw.Registry == nil {
 		return
 	}
 
-	// Query SessionSvr
 	req, _ := proto.Marshal(&pb.SessionData{PlayerId: playerID})
 	sconn := gw.Registry.RouteTo(conf.SvcSessionSvr, strconv.FormatInt(playerID, 10))
 	if sconn == nil {
 		return
 	}
 
-	// Send SessionGet request — SessionSvr responds with SessionData if session exists
+	ch := make(chan struct{})
+	gw.pendingSessionGets.Store(playerID, ch)
+	defer gw.pendingSessionGets.Delete(playerID)
+
 	sconn.SendMsg(protocol.MsgIdSessionGet, req)
+
+	select {
+	case <-ch:
+		zlog.Ins().InfoF("Gateway: CheckReconnect completed for player %d", playerID)
+	case <-time.After(reconnectTimeout):
+		zlog.Ins().ErrorF("Gateway: CheckReconnect timeout for player %d", playerID)
+	}
 }
 
 // HandleSessionGet is called when SessionSvr responds with the session data.
@@ -39,6 +53,14 @@ func (gw *GatewayServer) HandleSessionGet(request ziface.IRequest) {
 	}
 
 	playerID := data.PlayerId
+
+	// Signal the waiting CheckReconnect so OnConnStart can return and the
+	// Zinx reader goroutine can start processing client messages. We must
+	// signal on ALL exit paths — otherwise OnConnStart hangs until timeout.
+	if ch, ok := gw.pendingSessionGets.LoadAndDelete(playerID); ok {
+		defer close(ch.(chan struct{}))
+	}
+
 	val, ok := gw.PlayerConns.Load(playerID)
 	if !ok {
 		return
@@ -170,4 +192,41 @@ func (gw *GatewayServer) collectTags(conn ziface.IConnection) map[string]string 
 		}
 	}
 	return tags
+}
+
+// HandleSessionInvalidate is called when SessionSvr notifies this gateway that
+// a player has reconnected to a different gateway. We remove the player from
+// PlayerConns and stop the stale connection so Broadcaster.ToPlayer won't
+// route messages to the dead connection.
+func (gw *GatewayServer) HandleSessionInvalidate(request ziface.IRequest) {
+	var data pb.SessionData
+	if err := proto.Unmarshal(request.GetData(), &data); err != nil {
+		return
+	}
+	// Only act if this gateway is the old gateway that needs invalidation.
+	if data.GatewayId != gw.ID {
+		return
+	}
+	playerID := data.PlayerId
+	if playerID == 0 {
+		return
+	}
+
+	val, ok := gw.PlayerConns.Load(playerID)
+	if !ok {
+		return // already cleaned up
+	}
+	connID := val.(uint64)
+	gw.PlayerConns.Delete(playerID)
+
+	wsConn, err := gw.Server.GetConnMgr().Get(connID)
+	if err != nil {
+		zlog.Ins().InfoF("Gateway: invalidate player %d conn not found (already gone)", playerID)
+		return
+	}
+
+	zlog.Ins().InfoF("Gateway: invalidating player %d (reconnected elsewhere)", playerID)
+	wsConn.Stop()
+	// OnConnStop fires → PlayerConns.Delete (no-op, already deleted) →
+	// MarkDisconnected → SessionSvr ignores (stale gateway check)
 }

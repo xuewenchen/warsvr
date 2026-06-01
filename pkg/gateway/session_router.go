@@ -20,5 +20,7 @@ func (r *SessionResponseRouter) Handle(request ziface.IRequest) {
 		r.GW.HandleSessionGet(request)
 	case protocol.MsgIdSessionReconnect:
 		r.GW.HandleSessionGet(request)
+	case protocol.MsgIdSessionInvalidate:
+		r.GW.HandleSessionInvalidate(request)
 	}
 }

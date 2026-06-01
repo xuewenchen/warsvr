@@ -37,6 +37,7 @@ const (
 	MsgIdSessionForceLeave      = uint32(pb.MsgID_SESSION_FORCE_LEAVE)
 	MsgIdSessionForceLeaveQueue = uint32(pb.MsgID_SESSION_FORCE_LEAVE_QUEUE)
 	MsgIdSessionReconnected     = uint32(pb.MsgID_SESSION_RECONNECTED)
+	MsgIdSessionInvalidate      = uint32(pb.MsgID_SESSION_INVALIDATE)
 )
 
 const (
