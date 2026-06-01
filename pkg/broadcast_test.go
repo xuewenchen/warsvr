@@ -3,6 +3,7 @@ package pkg
 import (
 	"cardwar/pkg/conf"
 	"cardwar/pkg/connkey"
+	"cardwar/pkg/server"
 	"cardwar/protocol"
 	"cardwar/protocol/pb"
 	"sync"
@@ -35,9 +36,9 @@ func (r *testRecvRouter) Handle(req ziface.IRequest) {
 
 func startTestServer(t *testing.T, port int) ziface.IServer {
 	t.Helper()
-	s := NewServer(&zconf.Config{
+	s := server.New(&zconf.Config{
 		Name: "test-backend", Host: "127.0.0.1", TCPPort: port, Mode: zconf.ServerModeTcp,
-	})
+	}, "test-backend", nil, nil)
 	s.Start()
 	time.Sleep(100 * time.Millisecond)
 	return s
@@ -257,9 +258,9 @@ func BenchmarkBroadcastTo_10Gateways(b *testing.B) {
 }
 
 func startTestServerB(b *testing.B, port int) ziface.IServer {
-	s := NewServer(&zconf.Config{
+	s := server.New(&zconf.Config{
 		Name: "test-backend", Host: "127.0.0.1", TCPPort: port, Mode: zconf.ServerModeTcp,
-	})
+	}, "test-backend", nil, nil)
 	s.Start()
 	time.Sleep(100 * time.Millisecond)
 	return s

@@ -4,6 +4,7 @@ import (
 	"cardwar/apps/roomsvr/internal/router"
 	"cardwar/pkg"
 	"cardwar/pkg/conf"
+	"cardwar/pkg/server"
 	"cardwar/protocol"
 	"flag"
 
@@ -26,11 +27,18 @@ func main() {
 	reg := pkg.NewRegistry(conf.SvcRoomSvr)
 	reg.Dial(conf.SvcMatchSvr, nil, pkg.HashRoute)
 
-	s := pkg.NewServer(&zconf.Config{
+	s := server.New(&zconf.Config{
 		Name:    conf.SvcRoomSvr,
 		Host:    host,
 		TCPPort: port,
 		Mode:    zconf.ServerModeTcp,
+	}, conf.SvcRoomSvr, []uint32{
+		protocol.MsgIdRoomJoinReq,
+		protocol.MsgIdRoomLeaveReq,
+	}, []uint32{
+		protocol.MsgIdRoomJoinResp,
+		protocol.MsgIdRoomLeaveResp,
+		protocol.MsgIdRoomEventPush,
 	})
 
 	rr := &router.RoomRouter{BC: pkg.NewGateWayBroadcaster(s), Reg: reg}

@@ -90,7 +90,11 @@
       "Bash(protoc --go_out=../pb --go_opt=paths=source_relative msgid.proto)",
       "Bash(git checkout *)",
       "PowerShell(go mod *)",
-      "Bash(gofmt *)"
+      "Bash(gofmt *)",
+      "Bash(bash scripts/gen_pb.sh)",
+      "Bash(grep -n 'entry\\\\.conn = conn$' pkg/pool.go)",
+      "Bash(grep -n 'connCh <- conn$' pkg/pool.go)",
+      "Bash(timeout 5 ./bin/gateway.exe -conf config.yml -id gw-1)"
     ]
   }
 }

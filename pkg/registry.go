@@ -42,6 +42,13 @@ func (r *Registry) RouteTo(backend, key string) ziface.IConnection {
 	return p.Route(key)
 }
 
+// Pool returns the BackendPool for the named service, or nil.
+func (r *Registry) Pool(backend string) BackendPool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.backends[backend]
+}
+
 // SyncBackend adds new servers and removes old ones for a backend service.
 func (r *Registry) SyncBackend(service string, routers []BackendRouterConfig, routeFn RouteFunc) {
 	servers := conf.GlobalConfig.Services[service]

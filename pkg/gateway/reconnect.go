@@ -1,4 +1,4 @@
-package router
+package gateway
 
 import (
 	"strconv"
@@ -15,7 +15,7 @@ import (
 
 // CheckReconnect is called from OnConnStart after auth. It queries SessionSvr
 // to see if this player has a previous session, and if so restores state.
-func (gw *GatewayRef) CheckReconnect(playerID int64, conn ziface.IConnection) {
+func (gw *GatewayServer) CheckReconnect(playerID int64, conn ziface.IConnection) {
 	if gw.Registry == nil {
 		return
 	}
@@ -32,7 +32,7 @@ func (gw *GatewayRef) CheckReconnect(playerID int64, conn ziface.IConnection) {
 }
 
 // HandleSessionGet is called when SessionSvr responds with the session data.
-func (gw *GatewayRef) HandleSessionGet(request ziface.IRequest) {
+func (gw *GatewayServer) HandleSessionGet(request ziface.IRequest) {
 	var data pb.SessionData
 	if err := proto.Unmarshal(request.GetData(), &data); err != nil {
 		return
@@ -85,7 +85,7 @@ func (gw *GatewayRef) HandleSessionGet(request ziface.IRequest) {
 }
 
 // MarkDisconnected tells SessionSvr the player disconnected (but keeps session alive for TTL).
-func (gw *GatewayRef) MarkDisconnected(playerID int64) {
+func (gw *GatewayServer) MarkDisconnected(playerID int64) {
 	if gw.Registry == nil {
 		return
 	}
@@ -100,7 +100,7 @@ func (gw *GatewayRef) MarkDisconnected(playerID int64) {
 }
 
 // SyncSessionTags pushes the current connection tags to SessionSvr.
-func (gw *GatewayRef) SyncSessionTags(conn ziface.IConnection) {
+func (gw *GatewayServer) SyncSessionTags(conn ziface.IConnection) {
 	if gw.Registry == nil {
 		return
 	}
@@ -128,7 +128,7 @@ func (gw *GatewayRef) SyncSessionTags(conn ziface.IConnection) {
 }
 
 // 通知房间，玩家重新连接
-func (gw *GatewayRef) notifyRoomReconnected(playerID int64, matchID, serverID string, connID uint64, conn ziface.IConnection) {
+func (gw *GatewayServer) notifyRoomReconnected(playerID int64, matchID, serverID string, connID uint64, conn ziface.IConnection) {
 	key := serverID
 	if key == "" {
 		key = matchID
@@ -160,7 +160,7 @@ func toPlayerID(v interface{}) int64 {
 	return 0
 }
 
-func (gw *GatewayRef) collectTags(conn ziface.IConnection) map[string]string {
+func (gw *GatewayServer) collectTags(conn ziface.IConnection) map[string]string {
 	tags := make(map[string]string)
 	for _, key := range connkey.SyncTagKeys {
 		if v, err := conn.GetProperty(key); err == nil {

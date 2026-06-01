@@ -4,6 +4,7 @@ import (
 	"cardwar/apps/matchsvr/internal/router"
 	"cardwar/pkg"
 	"cardwar/pkg/conf"
+	"cardwar/pkg/server"
 	"cardwar/protocol"
 	"flag"
 
@@ -23,11 +24,21 @@ func main() {
 	cfg := conf.LookupServer(conf.GlobalConfig.Services[conf.SvcMatchSvr], *svrID, conf.SvcMatchSvr)
 	host, port := conf.ParseHostPort(cfg.Listen)
 
-	s := pkg.NewServer(&zconf.Config{
+	s := server.New(&zconf.Config{
 		Name:    conf.SvcMatchSvr,
 		Host:    host,
 		TCPPort: port,
 		Mode:    zconf.ServerModeTcp,
+	}, conf.SvcMatchSvr, []uint32{
+		protocol.MsgIdMatchEnterReq,
+		protocol.MsgIdMatchAllocateReq,
+		protocol.MsgIdMatchQueryReq,
+		protocol.MsgIdRoomDestroyedPush,
+	}, []uint32{
+		protocol.MsgIdMatchEnterResp,
+		protocol.MsgIdMatchResultPush,
+		protocol.MsgIdMatchAllocateResp,
+		protocol.MsgIdMatchQueryResp,
 	})
 
 	mr := &router.MatchRouter{BC: pkg.NewGateWayBroadcaster(s)}

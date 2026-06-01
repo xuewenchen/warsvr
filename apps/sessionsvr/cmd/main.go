@@ -4,6 +4,7 @@ import (
 	"cardwar/apps/sessionsvr/internal/router"
 	"cardwar/pkg"
 	"cardwar/pkg/conf"
+	"cardwar/pkg/server"
 	"cardwar/protocol"
 	"flag"
 
@@ -27,12 +28,12 @@ func main() {
 	reg.Dial(conf.SvcRoomSvr, nil, pkg.HashRoute)
 	reg.Dial(conf.SvcMatchSvr, nil, pkg.HashRoute)
 
-	s := pkg.NewServer(&zconf.Config{
+	s := server.New(&zconf.Config{
 		Name:    conf.SvcSessionSvr,
 		Host:    host,
 		TCPPort: port,
 		Mode:    zconf.ServerModeTcp,
-	})
+	}, conf.SvcSessionSvr, nil, nil) // session routing is hardcoded, no ServiceHello needed
 
 	sr := &router.SessionRouter{Reg: reg}
 	s.AddRouter(protocol.MsgIdSessionSave, sr)

@@ -1,4 +1,4 @@
-package router
+package gateway
 
 import (
 	"cardwar/pkg/connkey"
@@ -19,7 +19,7 @@ import (
 // based on connection metadata (connId or playerId).
 type ForwardRouter struct {
 	znet.BaseRouter
-	GW *GatewayRef
+	GW *GatewayServer
 }
 
 func (r *ForwardRouter) Handle(request ziface.IRequest) {

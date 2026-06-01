@@ -34,3 +34,11 @@ message Envelope {
   bytes  data    = 2;
   map<string, string> conn_tags = 3; // 附着在发包回包的额外数据
 }
+
+// ServiceHello is sent by a backend to announce which msgIDs it handles.
+// It is sent in response to SERVICE_IDENTITY when the caller is a gateway.
+message ServiceHello {
+  string service = 1;           // backend service name, e.g. "chatsvr"
+  repeated uint32 msg_ids = 2;  // msgIDs this backend handles (forward)
+  repeated uint32 send_msg_ids = 3; // msgIDs this backend may send (response/push)
+}

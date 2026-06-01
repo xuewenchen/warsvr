@@ -1,4 +1,4 @@
-package router
+package gateway
 
 import (
 	"cardwar/pkg/connkey"
@@ -16,7 +16,7 @@ import (
 // Envelope to the client connection's properties.
 type ResponseRouter struct {
 	znet.BaseRouter
-	GW *GatewayRef
+	GW *GatewayServer
 }
 
 func (r *ResponseRouter) Handle(request ziface.IRequest) {

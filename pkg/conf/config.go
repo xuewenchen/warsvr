@@ -15,9 +15,9 @@ type GatewayConfig struct {
 }
 
 type BackendRoute struct {
-	Forward   []uint32 `yaml:"forward"`
-	RouteKey  string   `yaml:"route_key"`  // "connId" (default), "playerId", or custom property name
-	RouteType string   `yaml:"route_type"` // "hash" (default) or "random"
+	Forward   []uint32 `yaml:"forward,omitempty"` // optional: msgID list; backends self-register via ServiceHello
+	RouteKey  string   `yaml:"route_key"`         // "connId" (default), "playerId", or custom property name
+	RouteType string   `yaml:"route_type"`        // "hash" (default) or "random"
 }
 
 type Config struct {

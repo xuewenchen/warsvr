@@ -19,6 +19,7 @@ import (
 // BackendPool routes a key to one backend connection.
 type BackendPool interface {
 	Route(key string) ziface.IConnection
+	AddConnectionRouter(conn ziface.IConnection, msgID uint32, router ziface.IRouter)
 }
 
 // BackendRouterConfig pairs a message ID with a router to register on backend connections.
@@ -81,6 +82,7 @@ type connEntry struct {
 	identity string // caller's service identity (e.g. "gateway"), sent on connect
 
 	mu           sync.Mutex
+	client       ziface.IClient // the client that owns the connection, for dynamic router registration
 	conn         ziface.IConnection
 	healthy      bool
 	stopped      bool // true = removed from pool, reconnect stops
@@ -140,6 +142,7 @@ func Dial(service string, routers []BackendRouterConfig, routeFn RouteFunc, iden
 			}
 			pool.conns[idx].mu.Lock()
 			pool.conns[idx].conn = conn
+			pool.conns[idx].client = client
 			pool.conns[idx].healthy = true
 			pool.conns[idx].mu.Unlock()
 			conn.SetProperty(connkey.PropServerID, srv.ID)
@@ -190,6 +193,23 @@ func (p *Pool) Route(key string) ziface.IConnection {
 	return p.routeFn(key, p.HealthyConns())
 }
 
+// AddConnectionRouter dynamically adds a router for msgID on the client that owns conn,
+// and appends it to the routers list so reconnections pick it up too.
+func (p *Pool) AddConnectionRouter(conn ziface.IConnection, msgID uint32, router ziface.IRouter) {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	for _, e := range p.conns {
+		e.mu.Lock()
+		if e.conn == conn && e.client != nil {
+			e.client.AddRouter(msgID, router)
+			e.routers = append(e.routers, BackendRouterConfig{MsgID: msgID, Router: router})
+			e.mu.Unlock()
+			return
+		}
+		e.mu.Unlock()
+	}
+}
+
 // AddServer connects to a single new server and appends it to the pool.
 // Blocks until the first connection succeeds or times out.
 func (p *Pool) AddServer(srv conf.ServerNode, service string, routers []BackendRouterConfig, routeFn RouteFunc, identity string) {
@@ -217,6 +237,7 @@ func (p *Pool) AddServer(srv conf.ServerNode, service string, routers []BackendR
 		entry.mu.Lock()
 		if !entry.stopped {
 			entry.conn = conn
+			entry.client = client
 			entry.healthy = true
 		}
 		entry.mu.Unlock()
@@ -394,6 +415,7 @@ func (p *Pool) reconnectLoop(idx int) {
 			if conn != nil {
 				e.mu.Lock()
 				e.conn = conn
+				e.client = client
 				e.healthy = true
 				e.backoff = reconnectInitBackoff
 				e.reconnecting = false

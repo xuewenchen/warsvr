@@ -41,4 +41,5 @@ const (
 
 const (
 	MsgIdServiceIdentity = uint32(pb.MsgID_SERVICE_IDENTITY)
+	MsgIdServiceHello    = uint32(pb.MsgID_SERVICE_HELLO)
 )

@@ -1,4 +1,4 @@
-package router
+package gateway
 
 import (
 	"cardwar/pkg/conf"
@@ -11,7 +11,7 @@ func TestBuildRouteIndex(t *testing.T) {
 			conf.SvcChatSvr: {Forward: []uint32{5}, RouteKey: "playerId"},
 		},
 	}
-	idx := BuildRouteIndex(cfg)
+	idx, _ := BuildRouteIndex(cfg)
 	if len(idx) != 1 {
 		t.Fatalf("expected 1 route, got %d", len(idx))
 	}
@@ -34,7 +34,7 @@ func TestBuildRouteIndex_MultipleBackends(t *testing.T) {
 			conf.SvcRoomSvr: {Forward: []uint32{7, 8}, RouteKey: "connId"},
 		},
 	}
-	idx := BuildRouteIndex(cfg)
+	idx, _ := BuildRouteIndex(cfg)
 	if len(idx) != 3 {
 		t.Fatalf("expected 3 routes, got %d", len(idx))
 	}
@@ -50,14 +50,14 @@ func TestBuildRouteIndex_MultipleBackends(t *testing.T) {
 }
 
 func TestBuildRouteIndex_Empty(t *testing.T) {
-	idx := BuildRouteIndex(conf.GatewayConfig{})
+	idx, _ := BuildRouteIndex(conf.GatewayConfig{})
 	if len(idx) != 0 {
 		t.Fatalf("expected 0 routes, got %d", len(idx))
 	}
 }
 
 func TestGatewayRef_RouteFor(t *testing.T) {
-	gw := &GatewayRef{}
+	gw := &GatewayServer{}
 	gw.SetRoutes(map[uint32]*BackendRouteInfo{
 		5: {Backend: conf.SvcChatSvr, RouteKey: "playerId"},
 	})

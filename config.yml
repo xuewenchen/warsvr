@@ -39,14 +39,11 @@ gateway:
   jwt_secret: "change-me-in-production"
   routes:
     chatsvr:
-      forward: [5]
       route_key: playerId
       route_type: hash
     matchsvr:
-      forward: [11, 18, 20]
       route_key: connId
       route_type: hash
     roomsvr:
-      forward: [14, 16]
       route_key: room_server_id
       route_type: direct

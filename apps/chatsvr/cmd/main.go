@@ -4,6 +4,7 @@ import (
 	"cardwar/apps/chatsvr/internal/router"
 	"cardwar/pkg"
 	"cardwar/pkg/conf"
+	"cardwar/pkg/server"
 	"cardwar/protocol"
 	"flag"
 
@@ -28,7 +29,9 @@ func main() {
 		TCPPort: port,
 		Mode:    zconf.ServerModeTcp,
 	}
-	s := pkg.NewServer(cfg)
+	s := server.New(cfg, conf.SvcChatSvr,
+		[]uint32{protocol.MsgIdChatReq},  // forward
+		[]uint32{protocol.MsgIdChatResp}) // send
 
 	s.AddRouter(protocol.MsgIdChatReq, &router.ChatRouter{BC: pkg.NewGateWayBroadcaster(s)})
 

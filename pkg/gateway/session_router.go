@@ -1,4 +1,4 @@
-package router
+package gateway
 
 import (
 	"cardwar/protocol"
@@ -11,12 +11,12 @@ import (
 // These have msgIDs outside the 1-1000 range that ResponseRouter covers.
 type SessionResponseRouter struct {
 	znet.BaseRouter
-	GW *GatewayRef
+	GW *GatewayServer
 }
 
 func (r *SessionResponseRouter) Handle(request ziface.IRequest) {
 	switch request.GetMsgID() {
-	case protocol.MsgIdSessionGet: // 这个msgId是来自SessionSvr
+	case protocol.MsgIdSessionGet:
 		r.GW.HandleSessionGet(request)
 	case protocol.MsgIdSessionReconnect:
 		r.GW.HandleSessionGet(request)
