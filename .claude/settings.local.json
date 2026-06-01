@@ -89,7 +89,8 @@
       "Bash(awk '{print $5, $NF}')",
       "Bash(protoc --go_out=../pb --go_opt=paths=source_relative msgid.proto)",
       "Bash(git checkout *)",
-      "PowerShell(go mod *)"
+      "PowerShell(go mod *)",
+      "Bash(gofmt *)"
     ]
   }
 }

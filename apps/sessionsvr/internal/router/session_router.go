@@ -17,6 +17,7 @@ import (
 const SessionTTL = 120 * time.Second
 
 type Session struct {
+	mu             sync.RWMutex
 	PlayerID       int64
 	GatewayID      string
 	ConnTags       map[string]string
@@ -49,12 +50,13 @@ func (r *SessionRouter) handleSave(request ziface.IRequest) {
 		zlog.Error(err)
 		return
 	}
-	s := &Session{
-		PlayerID:  data.PlayerId,
-		GatewayID: data.GatewayId,
-		ConnTags:  data.ConnTags,
-	}
-	sessions.Store(data.PlayerId, s)
+	v, _ := sessions.LoadOrStore(data.PlayerId, &Session{PlayerID: data.PlayerId})
+	s := v.(*Session)
+	s.mu.Lock()
+	s.GatewayID = data.GatewayId
+	s.ConnTags = data.ConnTags
+	s.DisconnectedAt = 0
+	s.mu.Unlock()
 }
 
 func (r *SessionRouter) handleGet(request ziface.IRequest) {
@@ -68,12 +70,14 @@ func (r *SessionRouter) handleGet(request ziface.IRequest) {
 		return // no session → no response (caller treats nil as expired)
 	}
 	s := v.(*Session)
+	s.mu.RLock()
 	resp, _ := proto.Marshal(&pb.SessionData{
 		PlayerId:       s.PlayerID,
 		GatewayId:      s.GatewayID,
 		ConnTags:       s.ConnTags,
 		DisconnectedAt: s.DisconnectedAt,
 	})
+	s.mu.RUnlock()
 	request.GetConnection().SendMsg(protocol.MsgIdSessionGet, resp)
 }
 
@@ -83,13 +87,17 @@ func (r *SessionRouter) handleDisconnect(request ziface.IRequest) {
 		zlog.Error(err)
 		return
 	}
-	v, ok := sessions.Load(data.PlayerId)
-	if !ok {
-		v = &Session{PlayerID: data.PlayerId, GatewayID: data.GatewayId, ConnTags: data.ConnTags}
-		sessions.Store(data.PlayerId, v)
-	}
+	v, _ := sessions.LoadOrStore(data.PlayerId, &Session{PlayerID: data.PlayerId})
 	s := v.(*Session)
+	s.mu.Lock()
+	if s.GatewayID == "" {
+		s.GatewayID = data.GatewayId
+	}
+	if s.ConnTags == nil {
+		s.ConnTags = data.ConnTags
+	}
 	s.DisconnectedAt = time.Now().Unix()
+	s.mu.Unlock()
 	zlog.Ins().InfoF("SessionSvr: player %d disconnected (gateway=%s)", s.PlayerID, s.GatewayID)
 }
 
@@ -104,19 +112,19 @@ func (r *SessionRouter) handleReconnect(request ziface.IRequest) {
 		return
 	}
 	s := v.(*Session)
+	s.mu.Lock()
 	s.DisconnectedAt = 0
 	s.GatewayID = data.GatewayId
 	if len(data.ConnTags) > 0 {
 		s.ConnTags = data.ConnTags
 	}
-	zlog.Ins().InfoF("SessionSvr: player %d reconnected (gateway=%s)", s.PlayerID, s.GatewayID)
-
-	// Respond with restored session data
 	resp, _ := proto.Marshal(&pb.SessionData{
 		PlayerId:       s.PlayerID,
 		GatewayId:      s.GatewayID,
 		ConnTags:       s.ConnTags,
 		DisconnectedAt: 0,
 	})
+	s.mu.Unlock()
+	zlog.Ins().InfoF("SessionSvr: player %d reconnected (gateway=%s)", s.PlayerID, s.GatewayID)
 	request.GetConnection().SendMsg(protocol.MsgIdSessionReconnect, resp)
 }

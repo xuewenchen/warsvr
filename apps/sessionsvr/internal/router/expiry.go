@@ -23,26 +23,39 @@ func StartExpiryScanner(reg *pkg.Registry) {
 			now := time.Now().Unix()
 			sessions.Range(func(key, value interface{}) bool {
 				s := value.(*Session)
+				s.mu.RLock()
 				if s.DisconnectedAt == 0 {
+					s.mu.RUnlock()
 					return true // still connected, skip
 				}
 				if now-s.DisconnectedAt < int64(SessionTTL.Seconds()) {
+					s.mu.RUnlock()
 					return true // not expired yet
 				}
+				s.mu.RUnlock()
 
-				zlog.Ins().InfoF("SessionSvr: session expired for player %d, cleaning up", s.PlayerID)
+				s.mu.Lock()
+				// Re-check under write lock to avoid TOCTOU with handleReconnect/handleSave
+				if s.DisconnectedAt != 0 && now-s.DisconnectedAt >= int64(SessionTTL.Seconds()) {
+					zlog.Ins().InfoF("SessionSvr: session expired for player %d, cleaning up", s.PlayerID)
 
-				// Force leave room if player was in one
-				if matchID := s.ConnTags[connkey.TagMatchID]; matchID != "" {
-					notifyForceLeaveRoom(reg, s.PlayerID, matchID, s.ConnTags[connkey.TagRoomSvrID])
+					matchID := s.ConnTags[connkey.TagMatchID]
+					matchType := s.ConnTags[connkey.TagMatchType]
+					roomSvrID := s.ConnTags[connkey.TagRoomSvrID]
+
+					sessions.Delete(key)
+					s.mu.Unlock()
+
+					if matchID != "" {
+						notifyForceLeaveRoom(reg, s.PlayerID, matchID, roomSvrID)
+					}
+					if matchType != "" {
+						notifyForceLeaveQueue(reg, s.PlayerID, matchType)
+					}
+				} else {
+					s.mu.Unlock()
 				}
 
-				// Force leave queue if player was in one
-				if matchType := s.ConnTags[connkey.TagMatchType]; matchType != "" {
-					notifyForceLeaveQueue(reg, s.PlayerID, matchType)
-				}
-
-				sessions.Delete(key)
 				return true
 			})
 		}
