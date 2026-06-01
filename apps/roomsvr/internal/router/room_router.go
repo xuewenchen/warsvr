@@ -3,6 +3,7 @@ package router
 import (
 	"cardwar/pkg"
 	"cardwar/pkg/conf"
+	"cardwar/pkg/connkey"
 	"cardwar/protocol"
 	"cardwar/protocol/pb"
 	"strconv"
@@ -57,7 +58,7 @@ func (r *RoomRouter) handleJoin(env *pb.Envelope, conn ziface.IConnection) {
 
 	zlog.Ins().InfoF("handleJoin %s", req.String())
 
-	playerID := env.ConnTags[pkg.TagPlayerID]
+	playerID := env.ConnTags[connkey.TagPlayerID]
 	rp := roomPlayer{playerID: playerID, conn: conn, senderID: env.ConnId}
 
 	raw, _ := rooms.LoadOrStore(req.MatchId, []roomPlayer{})
@@ -89,7 +90,7 @@ func (r *RoomRouter) handleLeave(env *pb.Envelope, conn ziface.IConnection) {
 
 	zlog.Ins().InfoF("handleLeave %s", req.String())
 
-	playerID := env.ConnTags[pkg.TagPlayerID]
+	playerID := env.ConnTags[connkey.TagPlayerID]
 
 	v, ok := rooms.Load(req.MatchId)
 	if !ok {
@@ -171,9 +172,9 @@ func (r *RoomRouter) handleReconnected(request ziface.IRequest) {
 		zlog.Error(err)
 		return
 	}
-	matchID := data.ConnTags[pkg.TagMatchID]
-	playerID := data.ConnTags[pkg.TagPlayerID]
-	senderID, _ := strconv.ParseUint(data.ConnTags[pkg.TagSenderID], 10, 64)
+	matchID := data.ConnTags[connkey.TagMatchID]
+	playerID := data.ConnTags[connkey.TagPlayerID]
+	senderID, _ := strconv.ParseUint(data.ConnTags[connkey.TagSenderID], 10, 64)
 
 	raw, ok := rooms.Load(matchID)
 	if !ok {
@@ -198,7 +199,7 @@ func (r *RoomRouter) handleForceLeave(request ziface.IRequest) {
 		zlog.Error(err)
 		return
 	}
-	matchID := data.ConnTags[pkg.TagMatchID]
+	matchID := data.ConnTags[connkey.TagMatchID]
 	playerID := strconv.FormatInt(data.PlayerId, 10)
 
 	raw, ok := rooms.Load(matchID)

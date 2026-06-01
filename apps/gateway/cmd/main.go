@@ -5,6 +5,7 @@ import (
 	"cardwar/pkg"
 	"cardwar/pkg/auth"
 	"cardwar/pkg/conf"
+	"cardwar/pkg/connkey"
 	"cardwar/pkg/corouter"
 	"cardwar/protocol"
 	"flag"
@@ -106,7 +107,7 @@ func initWebSocket(gw *router.GatewayRef, gwID string) {
 			return
 		}
 		playerID := val.(int64)
-		conn.SetProperty(pkg.PropPlayerID, playerID)
+		conn.SetProperty(connkey.PropPlayerID, playerID)
 		gw.PlayerConns.Store(playerID, conn.GetConnID())
 		zlog.Ins().InfoF("Client connected: connID=%d, player=%d, addr=%s", conn.GetConnID(), playerID, addr)
 
@@ -116,7 +117,7 @@ func initWebSocket(gw *router.GatewayRef, gwID string) {
 
 	// 设置玩家链接断开
 	wsServer.SetOnConnStop(func(conn ziface.IConnection) {
-		if pidVal, err := conn.GetProperty(pkg.PropPlayerID); err == nil {
+		if pidVal, err := conn.GetProperty(connkey.PropPlayerID); err == nil {
 			if pid, ok := pidVal.(int64); ok {
 				gw.PlayerConns.Delete(pid)
 				gw.MarkDisconnected(pid)

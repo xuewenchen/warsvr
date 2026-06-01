@@ -1,7 +1,7 @@
 package router
 
 import (
-	"cardwar/pkg"
+	"cardwar/pkg/connkey"
 	"cardwar/protocol/pb"
 	"strconv"
 	"sync"
@@ -11,7 +11,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// mockBC implements pkg.Broadcaster, records calls for assertions.
+// mockBC implements connkey.Broadcaster, records calls for assertions.
 type mockBC struct {
 	mu            sync.Mutex
 	toAllCalls    int
@@ -67,7 +67,7 @@ func makeChatEnvelope(senderPID int64, content string, targetPID int64) []byte {
 	env, _ := proto.Marshal(&pb.Envelope{
 		ConnId:   99,
 		Data:     chatReq,
-		ConnTags: map[string]string{pkg.TagPlayerID: i64s(senderPID)},
+		ConnTags: map[string]string{connkey.TagPlayerID: i64s(senderPID)},
 	})
 	return env
 }

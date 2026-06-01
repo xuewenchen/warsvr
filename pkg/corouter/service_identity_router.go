@@ -1,6 +1,8 @@
 package corouter
 
 import (
+	"cardwar/pkg/connkey"
+
 	"github.com/aceld/zinx/ziface"
 	"github.com/aceld/zinx/znet"
 )
@@ -14,5 +16,5 @@ type ServiceIdentityRouter struct {
 
 func (r *ServiceIdentityRouter) Handle(request ziface.IRequest) {
 	identity := string(request.GetData())
-	request.GetConnection().SetProperty("conn_type", identity)
+	request.GetConnection().SetProperty(connkey.PropConnType, identity)
 }

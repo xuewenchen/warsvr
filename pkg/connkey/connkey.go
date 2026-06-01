@@ -1,4 +1,4 @@
-package pkg
+package connkey
 
 // Well-known connection property keys — used with conn.SetProperty / conn.GetProperty.
 const (

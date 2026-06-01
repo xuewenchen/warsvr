@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"cardwar/pkg/conf"
+	"cardwar/pkg/connkey"
 	"cardwar/protocol"
 
 	"github.com/aceld/zinx/ziface"
@@ -29,11 +30,11 @@ type BackendRouterConfig struct {
 // RouteFunc is a pluggable routing strategy. Receives the routing key and healthy connections.
 type RouteFunc func(key string, healthy []ziface.IConnection) ziface.IConnection
 
-// DirectRoute finds a connection whose PropServerID property matches the key.
+// DirectRoute finds a connection whose connkey.PropServerID property matches the key.
 // Used for stateful services where requests must route to a specific instance.
 func DirectRoute(key string, healthy []ziface.IConnection) ziface.IConnection {
 	for _, conn := range healthy {
-		if id, err := conn.GetProperty(PropServerID); err == nil {
+		if id, err := conn.GetProperty(connkey.PropServerID); err == nil {
 			if fmt.Sprint(id) == key {
 				return conn
 			}
@@ -141,7 +142,7 @@ func Dial(service string, routers []BackendRouterConfig, routeFn RouteFunc, iden
 			pool.conns[idx].conn = conn
 			pool.conns[idx].healthy = true
 			pool.conns[idx].mu.Unlock()
-			conn.SetProperty(PropServerID, srv.ID)
+			conn.SetProperty(connkey.PropServerID, srv.ID)
 			zlog.Ins().InfoF("Dial: connected to %s[%s]: %s", service, srv.ID, conn.RemoteAddr())
 			wg.Done()
 		})
@@ -219,7 +220,7 @@ func (p *Pool) AddServer(srv conf.ServerNode, service string, routers []BackendR
 			entry.healthy = true
 		}
 		entry.mu.Unlock()
-		conn.SetProperty(PropServerID, srv.ID)
+		conn.SetProperty(connkey.PropServerID, srv.ID)
 		zlog.Ins().InfoF("Pool: added server %s[%s]: %s", service, srv.ID, conn.RemoteAddr())
 		wg.Done()
 	})

@@ -3,6 +3,7 @@ package router
 import (
 	"cardwar/pkg"
 	"cardwar/pkg/conf"
+	"cardwar/pkg/connkey"
 	"cardwar/protocol"
 	"cardwar/protocol/pb"
 	"fmt"
@@ -78,7 +79,7 @@ func (r *MatchRouter) handleEnter(env *pb.Envelope, conn ziface.IConnection) {
 		return
 	}
 
-	senderPID, _ := strconv.ParseInt(env.ConnTags[pkg.TagPlayerID], 10, 64)
+	senderPID, _ := strconv.ParseInt(env.ConnTags[connkey.TagPlayerID], 10, 64)
 	player := queuedPlayer{playerID: senderPID, elo: req.Elo, conn: conn, senderID: env.ConnId}
 
 	raw, _ := queues.LoadOrStore(req.MatchType, []queuedPlayer{})
@@ -123,8 +124,8 @@ func (r *MatchRouter) matchPool(matchType string, pool []queuedPlayer) {
 			ConnId: p.senderID,
 			Data:   data,
 			ConnTags: map[string]string{
-				pkg.TagRoomSvrID: serverID,
-				pkg.TagMatchID:   matchID,
+				connkey.TagRoomSvrID: serverID,
+				connkey.TagMatchID:   matchID,
 			},
 		}
 		envData, _ := proto.Marshal(env)
@@ -168,10 +169,10 @@ func (r *MatchRouter) sendAllocateResp(conn ziface.IConnection, senderID uint64,
 	resp, _ := proto.Marshal(&pb.MatchAllocateResp{MatchId: matchID, ServerId: serverID, Error: errMsg})
 	tags := map[string]string{}
 	if serverID != "" {
-		tags[pkg.TagRoomSvrID] = serverID
+		tags[connkey.TagRoomSvrID] = serverID
 	}
 	if matchID != "" {
-		tags[pkg.TagMatchID] = matchID
+		tags[connkey.TagMatchID] = matchID
 	}
 	env, _ := proto.Marshal(&pb.Envelope{ConnId: senderID, Data: resp, ConnTags: tags})
 	conn.SendMsg(protocol.MsgIdMatchAllocateResp, env)
@@ -194,8 +195,8 @@ func (r *MatchRouter) handleQuery(env *pb.Envelope, conn ziface.IConnection) {
 	}
 	tags := map[string]string{}
 	if resp.Found {
-		tags[pkg.TagRoomSvrID] = resp.ServerId
-		tags[pkg.TagMatchID] = req.MatchId
+		tags[connkey.TagRoomSvrID] = resp.ServerId
+		tags[connkey.TagMatchID] = req.MatchId
 	}
 	data, _ := proto.Marshal(resp)
 	envResp, _ := proto.Marshal(&pb.Envelope{ConnId: env.ConnId, Data: data, ConnTags: tags})
@@ -285,7 +286,7 @@ func (r *MatchRouter) handleForceLeaveQueue(request ziface.IRequest) {
 		zlog.Error(err)
 		return
 	}
-	matchType := data.ConnTags[pkg.TagMatchType]
+	matchType := data.ConnTags[connkey.TagMatchType]
 	raw, ok := queues.Load(matchType)
 	if !ok {
 		return

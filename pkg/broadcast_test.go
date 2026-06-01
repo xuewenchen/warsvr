@@ -2,6 +2,7 @@ package pkg
 
 import (
 	"cardwar/pkg/conf"
+	"cardwar/pkg/connkey"
 	"cardwar/protocol"
 	"cardwar/protocol/pb"
 	"sync"
@@ -111,7 +112,7 @@ func TestBroadcaster_ToPlayer(t *testing.T) {
 		if env.ConnId != 0 {
 			t.Error("expected ConnId=0")
 		}
-		target := env.ConnTags[TagTargetPlayerID]
+		target := env.ConnTags[connkey.TagTargetPlayerID]
 		if target != "42" {
 			t.Errorf("expected target_player_id=42, got %s", target)
 		}

@@ -1,7 +1,7 @@
 package router
 
 import (
-	"cardwar/pkg"
+	"cardwar/pkg/connkey"
 	"cardwar/protocol"
 	"cardwar/protocol/pb"
 	"fmt"
@@ -42,8 +42,8 @@ func (r *ForwardRouter) Handle(request ziface.IRequest) {
 		Data:   request.GetData(),
 	}
 	// 封包塞入额外字段
-	if pid, err := request.GetConnection().GetProperty(pkg.PropPlayerID); err == nil {
-		env.ConnTags = map[string]string{pkg.TagPlayerID: strconv.FormatInt(pid.(int64), 10)}
+	if pid, err := request.GetConnection().GetProperty(connkey.PropPlayerID); err == nil {
+		env.ConnTags = map[string]string{connkey.TagPlayerID: strconv.FormatInt(pid.(int64), 10)}
 	}
 	envData, _ := proto.Marshal(env)
 

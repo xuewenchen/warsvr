@@ -2,6 +2,7 @@ package router
 
 import (
 	"cardwar/pkg"
+	"cardwar/pkg/connkey"
 	"cardwar/protocol"
 	"cardwar/protocol/pb"
 	"strconv"
@@ -31,7 +32,7 @@ func (r *ChatRouter) Handle(request ziface.IRequest) {
 		return
 	}
 
-	senderPID, _ := strconv.ParseInt(env.ConnTags[pkg.TagPlayerID], 10, 64)
+	senderPID, _ := strconv.ParseInt(env.ConnTags[connkey.TagPlayerID], 10, 64)
 
 	push := &pb.ChatResp{
 		SenderPlayerId: senderPID,
