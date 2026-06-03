@@ -60,6 +60,11 @@ func (r *SessionRouter) handleSave(request ziface.IRequest) {
 	s.ConnTags = data.ConnTags
 	s.DisconnectedAt = 0
 	s.mu.Unlock()
+
+	journalAppend(journalEntry{
+		OP: "save", PlayerID: data.PlayerId, GatewayID: data.GatewayId,
+		ConnTags: data.ConnTags,
+	})
 }
 
 func (r *SessionRouter) handleGet(request ziface.IRequest) {
@@ -108,8 +113,15 @@ func (r *SessionRouter) handleDisconnect(request ziface.IRequest) {
 	if s.ConnTags == nil {
 		s.ConnTags = data.ConnTags
 	}
-	s.DisconnectedAt = time.Now().Unix()
+	disconnectedAt := time.Now().Unix()
+	s.DisconnectedAt = disconnectedAt
 	s.mu.Unlock()
+
+	journalAppend(journalEntry{
+		OP: "disconnect", PlayerID: data.PlayerId, GatewayID: data.GatewayId,
+		ConnTags: data.ConnTags, DisconnectedAt: disconnectedAt,
+	})
+
 	zlog.Ins().InfoF("SessionSvr: player %d disconnected (gateway=%s)", s.PlayerID, s.GatewayID)
 }
 
@@ -138,6 +150,12 @@ func (r *SessionRouter) handleReconnect(request ziface.IRequest) {
 		DisconnectedAt: 0,
 	})
 	s.mu.Unlock()
+
+	journalAppend(journalEntry{
+		OP: "reconnect", PlayerID: data.PlayerId, GatewayID: data.GatewayId,
+		ConnTags: data.ConnTags,
+	})
+
 	zlog.Ins().InfoF("SessionSvr: player %d reconnected (gateway=%s)", s.PlayerID, s.GatewayID)
 	request.GetConnection().SendMsg(protocol.MsgIdSessionReconnect, resp)
 

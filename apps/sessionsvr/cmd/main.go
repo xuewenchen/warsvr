@@ -9,6 +9,7 @@ import (
 	"flag"
 
 	"github.com/aceld/zinx/zconf"
+	"github.com/aceld/zinx/zlog"
 )
 
 func main() {
@@ -22,6 +23,13 @@ func main() {
 
 	cfg := conf.LookupServer(conf.GlobalConfig.Services[conf.SvcSessionSvr], *svrID, conf.SvcSessionSvr)
 	host, port := conf.ParseHostPort(cfg.Listen)
+
+	// Initialize persistent session store
+	if err := router.InitStore("persistlog/sessionsvr"); err != nil {
+		zlog.Ins().ErrorF("SessionSvr: persist init failed: %v", err)
+	}
+	defer router.CloseStore()
+	router.StartAutoSnapshot()
 
 	// Registry for connecting to RoomSvr and MatchSvr for TTL cleanup
 	reg := pkg.NewRegistry(conf.SvcSessionSvr)

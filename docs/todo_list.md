@@ -6,15 +6,24 @@
 
 ## P0 — 致命问题
 
-### 1. 状态无持久化
+### 1. 状态无持久化 🔧 基础设施就绪
 
 RoomSvr (`rooms sync.Map`)、MatchSvr (`queues sync.Map`、`activeMatches sync.Map`) 全在内存中。进程崩溃 → 所有房间、匹配队列、目录映射全部丢失。
 
-**建议方案**: WAL 日志或定期快照到本地文件，后续可接入 Redis/RocksDB。
+**已完成**: `pkg/persist` 通用持久化包（Journal + Snapshot 模型，与业务模型无关）。
+- `OpenStore(cfg)` — 自动恢复（加载快照 → 重放 journal）
+- `Append(entry)` — 追加增量日志，线程安全
+- `Snapshot()` — 原子全量快照 + 日志轮转
+- `StartAutoSnapshot()` — 后台定期快照 + 256MB 安全阀防磁盘满
+- 恢复处理器要求幂等（崩溃窗口内可能双写）
+
+**待做**: RoomSvr、MatchSvr 接入 `pkg/persist`。
 
 **涉及文件**:
-- `apps/roomsvr/internal/router/room_router.go`
-- `apps/matchsvr/internal/router/match_router.go`
+- `pkg/persist/store.go` — 通用持久化 Store
+- `pkg/persist/store_test.go` — 6 个测试场景
+- `apps/roomsvr/internal/router/room_router.go` — 接入
+- `apps/matchsvr/internal/router/match_router.go` — 接入
 
 ### 2. proto.Marshal 错误被静默吞掉
 
