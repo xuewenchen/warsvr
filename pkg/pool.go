@@ -20,6 +20,7 @@ import (
 type BackendPool interface {
 	Route(key string) ziface.IConnection
 	AddConnectionRouter(conn ziface.IConnection, msgID uint32, router ziface.IRouter)
+	Close()
 }
 
 // BackendRouterConfig pairs a message ID with a router to register on backend connections.
@@ -329,6 +330,11 @@ func (p *Pool) Sync(servers []conf.ServerNode, service string, routers []Backend
 			p.RemoveServer(addr)
 		}
 	}
+
+	// Always update the routing strategy, even when no servers changed.
+	p.mu.Lock()
+	p.routeFn = routeFn
+	p.mu.Unlock()
 }
 
 // HealthyConns returns all currently healthy connections. Safe for concurrent use.
@@ -342,6 +348,20 @@ func (p *Pool) HealthyConns() []ziface.IConnection {
 		}
 	}
 	return healthy
+}
+
+// Close stops all connections in the pool and marks them as stopped so reconnect loops exit.
+func (p *Pool) Close() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	for _, e := range p.conns {
+		e.mu.Lock()
+		e.stopped = true
+		if e.conn != nil {
+			e.conn.Stop()
+		}
+		e.mu.Unlock()
+	}
 }
 
 // OnDisconnect marks a connection as dead and starts reconnection.

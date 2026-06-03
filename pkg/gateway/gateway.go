@@ -64,32 +64,44 @@ func New(configPath, gwID string) (*GatewayServer, error) {
 	helloRouter := &ServiceHelloRouter{GW: gw}
 	gw.InitResponse(&ResponseRouter{GW: gw})
 
-	// 初始化websocket（必须在 Dial 之前，确保 Server 和 FwdRouter 就绪）
+	// init WebSocket (must be before Dial, so Server and FwdRouter are ready)
 	initWebSocket(gw, gwID)
 
-	// 链接其他后端服务
+	// Dial backend services
 	for backend, rc := range conf.GlobalConfig.Gateway.Routes {
 		routers := gw.backendRouters(helloRouter)
 		gw.Dial(backend, routers, pkg.RouteFuncFor(rc.RouteType))
 	}
-	// 链接session后端服务
+	// Dial session service
 	gw.DialSessionSvr()
 
-	// 启动 MarkDisconnected 重试循环
+	// Start MarkDisconnected retry loop
 	go gw.retryDisconnectLoop()
 
-	// 配置热更
+	// Config hot-reload
 	if _, err := conf.Watch(configPath, func(cfg *conf.Config) {
-		// 同步其他后端服务
 		newIndex, backendCfgs := BuildRouteIndex(cfg.Gateway)
-		gw.SetRoutes(newIndex)
-		gw.SetBackendCfgs(backendCfgs)
+
+		// Step 1: sync pools for backends in the new config
 		for backend, rc := range cfg.Gateway.Routes {
 			routers := gw.backendRouters(helloRouter)
 			gw.SyncBackend(backend, routers, pkg.RouteFuncFor(rc.RouteType))
 		}
-		// 同步session服务
+		// Step 2: sync session service
 		gw.SyncSessionSvr()
+
+		// Step 3: clean up backends removed from config entirely
+		keep := make(map[string]struct{}, len(cfg.Gateway.Routes)+1)
+		for backend := range cfg.Gateway.Routes {
+			keep[backend] = struct{}{}
+		}
+		keep[conf.SvcSessionSvr] = struct{}{}
+		gw.CleanupBackends(keep)
+
+		// Step 4: atomically swap route table last, after all pools are ready
+		gw.SetBackendCfgs(backendCfgs)
+		gw.SetRoutes(newIndex)
+
 		zlog.Ins().InfoF("Gateway: hot-reloaded (%d msgIDs, %d backends)", len(newIndex), len(cfg.Gateway.Routes))
 	}); err != nil {
 		zlog.Ins().ErrorF("Gateway: config watch failed: %v", err)

@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/aceld/zinx/ziface"
+	"github.com/aceld/zinx/zlog"
 )
 
 // Registry manages connections to multiple backend services.
@@ -47,6 +48,21 @@ func (r *Registry) Pool(backend string) BackendPool {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return r.backends[backend]
+}
+
+// CleanupBackends closes and removes backend pools whose service name is not
+// present in the keep map. Call after SyncBackend to garbage-collect backends
+// that were entirely removed from config.
+func (r *Registry) CleanupBackends(keep map[string]struct{}) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for name, pool := range r.backends {
+		if _, ok := keep[name]; !ok {
+			zlog.Ins().InfoF("Registry: cleaning up removed backend %s", name)
+			pool.Close()
+			delete(r.backends, name)
+		}
+	}
 }
 
 // SyncBackend adds new servers and removes old ones for a backend service.
