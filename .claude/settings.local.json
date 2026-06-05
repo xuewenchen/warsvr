@@ -102,7 +102,8 @@
       "Bash(./bin/svchelper.exe build *)",
       "Bash(./bin/user-service.exe -conf apps/user/user-service/config.yml)",
       "Bash(./bin/svchelper.exe etcd *)",
-      "Bash(kill %1)"
+      "Bash(kill %1)",
+      "Bash(./bin/svchelper.exe stop *)"
     ]
   }
 }

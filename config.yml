@@ -47,3 +47,8 @@ gateway:
     roomsvr:
       route_key: room_server_id
       route_type: direct
+
+grpc:
+  user-service:
+    port: 50051
+  user-job: {}

@@ -215,19 +215,18 @@ func findServicePath(svc string) string {
 
 // isGRPCService returns true if the service is a gRPC service (not a Zinx service).
 func isGRPCService(svc string) bool {
-	grpcServices := map[string]bool{
-		conf.SvcUserService: true,
-		conf.SvcUserJob:     true,
+	if conf.GlobalConfig == nil {
+		return false
 	}
-	return grpcServices[svc]
+	_, ok := conf.GlobalConfig.GRPC[svc]
+	return ok
 }
 
-// grpcPort returns the default gRPC port for a service, or 0 if the service has no server.
 func grpcPort(svc string) int {
-	ports := map[string]int{
-		conf.SvcUserService: 50051,
+	if conf.GlobalConfig == nil {
+		return 0
 	}
-	return ports[svc]
+	return conf.GlobalConfig.GRPC[svc].Port
 }
 
 func buildSelf() {
@@ -405,6 +404,23 @@ func doStop(target string) {
 	if target == "all" {
 		for _, inst := range listInstances() {
 			killByPort(inst.port, inst.svc)
+		}
+		// Also stop gRPC services
+		for svc, cfg := range conf.GlobalConfig.GRPC {
+			if cfg.Port > 0 {
+				killByPort(cfg.Port, svc)
+			}
+		}
+		return
+	}
+	// Check gRPC services first
+	if isGRPCService(target) {
+		port := grpcPort(target)
+		if port > 0 {
+			killByPort(port, target)
+		} else {
+			fmt.Printf(">>> Stopping %s (worker, no port)...\n", target)
+			fmt.Println("  Not running (worker services are not tracked)")
 		}
 		return
 	}

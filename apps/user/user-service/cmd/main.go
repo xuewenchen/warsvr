@@ -34,7 +34,7 @@ func loadConfig(path string) (*serviceConfig, error) {
 }
 
 func main() {
-	configPath := flag.String("conf", "config.yml", "config file path")
+	configPath := flag.String("conf", "apps/user/user-service/config.yml", "config file path")
 	flag.Parse()
 
 	cfg, err := loadConfig(*configPath)

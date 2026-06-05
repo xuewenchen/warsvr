@@ -40,7 +40,7 @@ func loadJobConfig(path string) (*jobConfig, error) {
 }
 
 func main() {
-	configPath := flag.String("conf", "config.yml", "config file path")
+	configPath := flag.String("conf", "apps/user/user-job/config.yml", "config file path")
 	flag.Parse()
 
 	cfg, err := loadJobConfig(*configPath)

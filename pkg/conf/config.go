@@ -20,9 +20,18 @@ type BackendRoute struct {
 	RouteType string   `yaml:"route_type"`        // "hash" (default) or "random"
 }
 
+// GRPCSvcConfig defines a gRPC service entry in the top-level config.
+type GRPCSvcConfig struct {
+	Port int `yaml:"port"`
+}
+
+// GRPCConfig maps gRPC service names to their config.
+type GRPCConfig map[string]GRPCSvcConfig
+
 type Config struct {
 	Services ServicesConfig `yaml:"services"`
 	Gateway  GatewayConfig  `yaml:"gateway"`
+	GRPC     GRPCConfig     `yaml:"grpc"`
 }
 
 // ServicesConfig maps backend names to their server node lists.
