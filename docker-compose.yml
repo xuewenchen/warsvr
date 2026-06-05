@@ -1,0 +1,8 @@
+services:
+  user-service:
+    image: localhost:5000/cardwar/user-service:latest
+    ports:
+      - "50051:50051"
+    environment:
+      - ETCD_ENDPOINTS=host.docker.internal:2379
+    restart: unless-stopped

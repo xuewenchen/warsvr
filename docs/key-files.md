@@ -76,11 +76,33 @@
 | `protocol/msgid.go` | Go uint32 aliases for pb.MsgID_* |
 | `protocol/pb/*.pb.go` | Generated protobuf Go code |
 
+## User-Service (gRPC)
+
+| File | Purpose |
+|---|---|
+| `apps/user/user-service/cmd/main.go` | Entrypoint: YAML config + env var override + gRPC server |
+| `apps/user/user-service/config.yml` | Default config (addr, etcd endpoints) |
+| `apps/user/user-service/Dockerfile` | Multi-stage Docker build (`FROM scratch`, ~22MB) |
+| `apps/user/user-service/internal/handler/user_handler.go` | gRPC handler: Ping, CreateUser, GetUser, UpdateUser, DeleteUser, ListUsers (in-memory store) |
+| `apps/user/user-job/cmd/main.go` | NATS consumer + cron ping job (forwards to user-service via gRPC) |
+| `protocol/proto/user/user.proto` | Protobuf definition for UserService |
+| `protocol/pb/user/user.pb.go` | Generated protobuf Go code |
+| `protocol/pb/user/user_grpc.pb.go` | Generated gRPC Go code |
+
+## Docker
+
+| File | Purpose |
+|---|---|
+| `apps/user/user-service/Dockerfile` | Multi-stage build: Go cross-compile → `FROM scratch` |
+| `docker-compose.yml` | Container orchestration for all Dockerized services |
+| `.dockerignore` | Exclude non-source files from build context |
+| `docs/docker-deploy.md` | Docker deployment guide (build, push, up, down) |
+
 ## Tools
 
 | File | Purpose |
 |---|---|
-| `tools/svchelper/main.go` | Service manager: build/start/stop/restart/reboot + status + jwt |
+| `tools/svchelper/main.go` | Service manager: build/start/stop/restart/reboot + docker-* + status + jwt |
 | `tools/testclient/cmd/main.go` | Go WebSocket test client |
 | `tools/loadtest/cmd/main.go` | Load test tool |
 | `scripts/svc.sh` / `svc.bat` | Thin wrapper around svchelper |

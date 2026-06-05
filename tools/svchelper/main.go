@@ -24,6 +24,45 @@ func main() {
 		return
 	}
 
+	// docker commands: no config needed
+	if cmd == "docker-build" || cmd == "docker-push" {
+		if len(os.Args) < 3 {
+			fmt.Fprintf(os.Stderr, "Usage: svchelper %s <service> [version] [registry]\n", cmd)
+			os.Exit(1)
+		}
+		target := os.Args[2]
+		version := "latest"
+		registry := "localhost:5000"
+		if len(os.Args) > 3 {
+			version = os.Args[3]
+		}
+		if len(os.Args) > 4 {
+			registry = os.Args[4]
+		}
+		switch cmd {
+		case "docker-build":
+			doDockerBuild(target, version, registry)
+		case "docker-push":
+			doDockerPush(target, version, registry)
+		}
+		return
+	}
+
+	if cmd == "docker-up" || cmd == "docker-down" {
+		if len(os.Args) < 3 {
+			fmt.Fprintf(os.Stderr, "Usage: svchelper %s <service|all>\n", cmd)
+			os.Exit(1)
+		}
+		target := os.Args[2]
+		switch cmd {
+		case "docker-up":
+			doDockerUp(target)
+		case "docker-down":
+			doDockerDown(target)
+		}
+		return
+	}
+
 	// service commands: build, start, stop, restart, reboot
 	if len(os.Args) < 3 {
 		fmt.Fprintf(os.Stderr, "Usage: svchelper %s <cs-1|gw-1|all> [config.yml]\n", cmd)
@@ -66,16 +105,20 @@ func usage() {
 	fmt.Println("Usage: svchelper <cmd> <instance|all> [config.yml]")
 	fmt.Println()
 	fmt.Println("Commands:")
-	fmt.Println("  build <xxx>     compile binary")
-	fmt.Println("  start <xxx>     run binary")
-	fmt.Println("  stop <xxx>      kill process by port")
-	fmt.Println("  restart <xxx>   stop + start")
-	fmt.Println("  reboot <xxx>    stop + build + start")
-	fmt.Println("  status          show full cluster topology & connections")
-	fmt.Println("  list [config]   show all instances")
-	fmt.Println("  type <id>       get service type for instance")
-	fmt.Println("  port <id>       get listen port for instance")
-	fmt.Println("  jwt <playerId>  generate JWT token for player")
+	fmt.Println("  build <xxx>        compile binary")
+	fmt.Println("  start <xxx>        run binary")
+	fmt.Println("  stop <xxx>         kill process by port")
+	fmt.Println("  restart <xxx>      stop + start")
+	fmt.Println("  reboot <xxx>       stop + build + start")
+	fmt.Println("  docker-build <svc> [ver] [reg]  cross-compile linux + docker build")
+	fmt.Println("  docker-push <svc> [ver] [reg]   docker push to registry")
+	fmt.Println("  docker-up <svc|all>             start/restart containers")
+	fmt.Println("  docker-down <svc|all>           stop & remove containers")
+	fmt.Println("  status             show full cluster topology & connections")
+	fmt.Println("  list [config]      show all instances")
+	fmt.Println("  type <id>          get service type for instance")
+	fmt.Println("  port <id>          get listen port for instance")
+	fmt.Println("  jwt <playerId>     generate JWT token for player")
 }
 
 // ---- query commands ----
@@ -444,6 +487,96 @@ func killByPort(port int, svc string) {
 	} else {
 		fmt.Println("  Not running")
 	}
+}
+
+// ---- docker commands ----
+
+func doDockerBuild(svc, version, registry string) {
+	path := findServicePath(svc)
+	if path == "" {
+		fmt.Fprintf(os.Stderr, "ERROR: service %q not found\n", svc)
+		os.Exit(1)
+	}
+	// path: apps/user/user-service/cmd → strip /cmd, append /Dockerfile
+	dir := path[:len(path)-4]
+	dockerfile := dir + "/Dockerfile"
+	if _, err := os.Stat(dockerfile); os.IsNotExist(err) {
+		fmt.Fprintf(os.Stderr, "ERROR: %s not found\n", dockerfile)
+		os.Exit(1)
+	}
+
+	// Step 1: cross-compile Linux binary
+	fmt.Printf(">>> Cross-compiling %s (linux/amd64)...\n", svc)
+	binName := fmt.Sprintf("bin/%s-linux", svc)
+	buildCmd := exec.Command("go", "build", "-mod=vendor", "-ldflags=-s -w", "-o", binName, "./"+path)
+	buildCmd.Env = append(os.Environ(), "GOOS=linux", "CGO_ENABLED=0")
+	buildCmd.Stdout = os.Stdout
+	buildCmd.Stderr = os.Stderr
+	if err := buildCmd.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "  FAILED: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("  -> %s\n", binName)
+
+	// Step 2: docker build (tag with version + latest)
+	image := fmt.Sprintf("%s/cardwar/%s:%s", registry, svc, version)
+	latestImage := fmt.Sprintf("%s/cardwar/%s:latest", registry, svc)
+	fmt.Printf(">>> docker build -t %s -t %s ...\n", image, latestImage)
+	dockerCmd := exec.Command("docker", "build", "-f", dockerfile,
+		"-t", image, "-t", latestImage, ".")
+	dockerCmd.Stdout = os.Stdout
+	dockerCmd.Stderr = os.Stderr
+	if err := dockerCmd.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "  FAILED: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("  -> %s\n", image)
+	fmt.Printf("  -> %s\n", latestImage)
+}
+
+func doDockerPush(svc, version, registry string) {
+	image := fmt.Sprintf("%s/cardwar/%s:%s", registry, svc, version)
+	fmt.Printf(">>> docker push %s ...\n", image)
+	cmd := exec.Command("docker", "push", image)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "  FAILED: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Println("  Done")
+}
+
+func doDockerUp(svc string) {
+	args := []string{"compose", "up", "-d", "--pull", "always"}
+	if svc != "all" {
+		args = append(args, svc)
+	}
+	fmt.Printf(">>> docker %s ...\n", strings.Join(args, " "))
+	cmd := exec.Command("docker", args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "  FAILED: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Println("  Done")
+}
+
+func doDockerDown(svc string) {
+	args := []string{"compose", "down"}
+	if svc != "all" {
+		args = append(args, svc)
+	}
+	fmt.Printf(">>> docker %s ...\n", strings.Join(args, " "))
+	cmd := exec.Command("docker", args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "  FAILED: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Println("  Done")
 }
 
 // ---- helpers ----

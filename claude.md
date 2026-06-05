@@ -19,10 +19,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | **MatchSvr** | Matchmaking pool + roomsvr directory | `route_type: hash` |
 | **RoomSvr** | Room lifecycle (auto-create, auto-destroy) | `route_type: direct` |
 | **SessionSvr** | Player session persistence, TTL cleanup on disconnect | `route_type: hash` |
+| **User-Service** | gRPC user CRUD (Docker-deployed, etcd service discovery) | `grpc` |
 
 ### Quick Start
 
 ```bash
+# Local dev (Zinx services)
 scripts\svc.bat build all
 scripts\svc.bat start cs-1
 scripts\svc.bat start gw-1
@@ -30,6 +32,10 @@ scripts\svc.bat start sessionsvr-1
 scripts\svc.bat start matchsvr-1
 scripts\svc.bat start roomsvr-1
 scripts\svc.bat status    # cluster topology
+
+# Docker deploy (user-service)
+svchelper docker-build user-service
+svchelper docker-up user-service
 ```
 
 ## Documentation
@@ -47,4 +53,5 @@ scripts\svc.bat status    # cluster topology
 | [docs/wire-format.md](docs/wire-format.md) | Zinx DataPack, JWT auth |
 | [docs/key-files.md](docs/key-files.md) | File reference table |
 | [docs/scripts.md](docs/scripts.md) | Build/start scripts usage |
+| [docs/docker-deploy.md](docs/docker-deploy.md) | Docker build, push, deploy guide |
 | [docs/benchmark-2026-05-27.md](docs/benchmark-2026-05-27.md) | Performance benchmark report |

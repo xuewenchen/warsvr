@@ -1,0 +1,27 @@
+# Git
+.git/
+
+# Claude Code
+.claude/
+.codegraph/
+
+# Build artifacts (keep bin/*linux for Docker)
+bin/*.exe
+*.exe
+*.exe~
+
+# Logs & data
+log/
+persistlog/
+
+# Docs & tools
+docs/
+examples/
+test/
+tools/
+configs/
+
+# Config (service-specific configs are copied explicitly)
+config.yml
+TODO.md
+CLAUDE.md

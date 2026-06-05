@@ -4,6 +4,7 @@ import (
 	"flag"
 	"log"
 	"os"
+	"strings"
 
 	"cardwar/apps/user/user-service/internal/handler"
 	"cardwar/pkg/grpcserver"
@@ -40,6 +41,13 @@ func main() {
 	cfg, err := loadConfig(*configPath)
 	if err != nil {
 		log.Fatalf("load config: %v", err)
+	}
+
+	if addr := os.Getenv("LISTEN_ADDR"); addr != "" {
+		cfg.Addr = addr
+	}
+	if endpoints := os.Getenv("ETCD_ENDPOINTS"); endpoints != "" {
+		cfg.Etcd.Endpoints = strings.Split(endpoints, ",")
 	}
 
 	srv, err := grpcserver.New(grpcserver.Config{
