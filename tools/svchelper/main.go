@@ -19,7 +19,7 @@ func main() {
 	}
 
 	cmd := os.Args[1]
-	if cmd == "list" || cmd == "type" || cmd == "port" || cmd == "jwt" || cmd == "status" || cmd == "conns" {
+	if cmd == "list" || cmd == "type" || cmd == "port" || cmd == "jwt" || cmd == "status" || cmd == "conns" || cmd == "etcd" {
 		handleQuery(os.Args)
 		return
 	}
@@ -135,6 +135,8 @@ func handleQuery(args []string) {
 
 	case "status", "conns":
 		showStatus()
+	case "etcd":
+		showEtcd()
 	}
 }
 
@@ -166,19 +168,66 @@ func doBuild(target string) {
 }
 
 func discoverServices() []string {
-	entries, err := os.ReadDir("apps")
-	if err != nil {
-		return nil
-	}
 	var svcs []string
-	for _, e := range entries {
-		if e.IsDir() {
-			if _, err := os.Stat("apps/" + e.Name() + "/cmd"); err == nil {
-				svcs = append(svcs, e.Name())
+	domains, _ := os.ReadDir("apps")
+	for _, d := range domains {
+		if !d.IsDir() {
+			continue
+		}
+		// Flat services: apps/<name>/cmd/ (Zinx)
+		if _, err := os.Stat("apps/" + d.Name() + "/cmd"); err == nil {
+			svcs = append(svcs, d.Name())
+			continue
+		}
+		// Nested services: apps/<domain>/<name>/cmd/ (gRPC)
+		entries, _ := os.ReadDir("apps/" + d.Name())
+		for _, e := range entries {
+			if e.IsDir() {
+				if _, err := os.Stat("apps/" + d.Name() + "/" + e.Name() + "/cmd"); err == nil {
+					svcs = append(svcs, e.Name())
+				}
 			}
 		}
 	}
 	return svcs
+}
+
+// findServicePath returns the build path for a service name.
+// It searches apps/<domain>/<svc>/cmd/ first (nested), then apps/<svc>/cmd/ (flat).
+func findServicePath(svc string) string {
+	domains, _ := os.ReadDir("apps")
+	for _, d := range domains {
+		if !d.IsDir() {
+			continue
+		}
+		p := "apps/" + d.Name() + "/" + svc + "/cmd"
+		if _, err := os.Stat(p); err == nil {
+			return p
+		}
+	}
+	// Flat structure fallback
+	p := "apps/" + svc + "/cmd"
+	if _, err := os.Stat(p); err == nil {
+		return p
+	}
+	return ""
+}
+
+// isGRPCService returns true if the service is a gRPC service (not a Zinx service).
+func isGRPCService(svc string) bool {
+	grpcServices := map[string]bool{
+		conf.SvcUserService: true,
+		conf.SvcUserJob:     true,
+	}
+	return grpcServices[svc]
+}
+
+// grpcPort returns the default gRPC port for a service, or 0 if the service has no server.
+func grpcPort(svc string) int {
+	ports := map[string]int{
+		conf.SvcUserService: 50051,
+	}
+	return ports[svc]
 }
 
 func buildSelf() {
@@ -193,8 +242,13 @@ func buildSelf() {
 }
 
 func buildOne(svc string) {
+	path := findServicePath(svc)
+	if path == "" {
+		fmt.Fprintf(os.Stderr, "ERROR: cannot find service %q\n", svc)
+		os.Exit(1)
+	}
 	fmt.Printf(">>> Building %s...\n", svc)
-	cmd := exec.Command("go", "build", "-o", fmt.Sprintf("bin/%s%s", svc, exeExt()), "./apps/"+svc+"/cmd/")
+	cmd := exec.Command("go", "build", "-o", fmt.Sprintf("bin/%s%s", svc, exeExt()), "./"+path)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -213,6 +267,11 @@ func doStart(target, configPath string) {
 		}
 		return
 	}
+	// Check if target is a gRPC service name (no config entry)
+	if isGRPCService(target) {
+		startOne(target, target, 0, configPath)
+		return
+	}
 	svc, node := findServiceNode(target)
 	if svc == "" {
 		fmt.Fprintf(os.Stderr, "ERROR: instance %q not found in config\n", target)
@@ -223,6 +282,11 @@ func doStart(target, configPath string) {
 }
 
 func startOne(svc, id string, port int, configPath string) {
+	if isGRPCService(svc) {
+		startGRPCService(svc, id)
+		return
+	}
+
 	if portOccupied(port) {
 		fmt.Printf("  %s (%s) is already running on port %d\n", svc, id, port)
 		return
@@ -257,6 +321,70 @@ func startOne(svc, id string, port int, configPath string) {
 	}
 
 	// Poll port until listening (Dial may wait for downstream connections)
+	for i := 0; i < 20; i++ {
+		time.Sleep(400 * time.Millisecond)
+		if portOccupied(port) {
+			fmt.Printf("  OK (pid:%d, port:%d, log:%s)\n", cmd.Process.Pid, port, logPath)
+			pidDir := "bin/.pids"
+			os.MkdirAll(pidDir, 0755)
+			os.WriteFile(pidDir+"/"+svc+".pid", []byte(strconv.Itoa(cmd.Process.Pid)), 0644)
+			return
+		}
+	}
+	fmt.Printf("  FAILED - port %d not listening after 8s. Tail log:\n", port)
+	cmd.Process.Kill()
+	printLogTail(logPath)
+	os.Exit(1)
+}
+
+func startGRPCService(svc, id string) {
+	port := grpcPort(svc)
+
+	if port > 0 && portOccupied(port) {
+		fmt.Printf("  %s (%s) is already running on port %d\n", svc, id, port)
+		return
+	}
+
+	bin := "bin/" + svc + exeExt()
+	if _, err := os.Stat(bin); os.IsNotExist(err) {
+		buildOne(svc)
+	}
+
+	logName := svc
+	if id != "" {
+		logName = svc + "-" + id
+	}
+	os.MkdirAll("log", 0755)
+	logPath := "log/" + logName + ".log"
+
+	fmt.Printf(">>> Starting %s...\n", svc)
+
+	// Prefer service-specific config.yml
+	confPath := "config.yml"
+	if p := findServicePath(svc); p != "" {
+		svcConf := p[:len(p)-4] + "config.yml"
+		if _, err := os.Stat(svcConf); err == nil {
+			confPath = svcConf
+		}
+	}
+	args := []string{"-conf", confPath}
+
+	logFile, _ := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	cmd := exec.Command(bin, args...)
+	cmd.Stdout = logFile
+	cmd.Stderr = logFile
+	if err := cmd.Start(); err != nil {
+		fmt.Fprintf(os.Stderr, "  FAILED to start: %v\n", err)
+		os.Exit(1)
+	}
+
+	if port == 0 {
+		// Worker service: no server to listen on, just confirm it started
+		fmt.Printf("  OK (pid:%d, worker, log:%s)\n", cmd.Process.Pid, logPath)
+		return
+	}
+
+	// Poll port until listening
 	for i := 0; i < 20; i++ {
 		time.Sleep(400 * time.Millisecond)
 		if portOccupied(port) {

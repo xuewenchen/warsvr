@@ -8,14 +8,16 @@ OUT_DIR="protocol/pb"
 
 echo "=== Generating protobuf Go code ==="
 
-for proto in "$PROTO_DIR"/*.proto; do
-  name=$(basename "$proto")
-  echo "  $name"
-  protoc \
-    --proto_path="$PROTO_DIR" \
-    --go_out="$OUT_DIR" \
-    --go_opt=paths=source_relative \
-    "$proto"
+find "$PROTO_DIR" -name '*.proto' -print0 | while IFS= read -r -d '' proto; do
+    rel=$(realpath --relative-to="$PROTO_DIR" "$proto")
+    echo "  $rel"
+    protoc \
+        --proto_path="$PROTO_DIR" \
+        --go_out="$OUT_DIR" \
+        --go_opt=paths=source_relative \
+        --go-grpc_out="$OUT_DIR" \
+        --go-grpc_opt=paths=source_relative \
+        "$proto"
 done
 
 echo "=== Done ==="
